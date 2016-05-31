@@ -37,28 +37,72 @@ class ExRootTreeReader;
 class ExRootResult;
 #endif
 
+#include "TSystem.h"
+#include <TH1.h>
+#include "TString.h"
+#include "vector"
+#include <TMath.h>
+#include <iostream>
+#include "TGraph.h"
+#include <typeinfo>
+#include "TLorentzVector.h"
+
 //------------------------------------------------------------------------------
 
-struct TestPlots
+double ptrangemin = 10;
+double ptrangemax = 1000;
+static const int Nbins = 10;
+
+struct resolPlot
 {
-  TH1 *fJetPT;
+    TH1 *cenResolHist;
+    TH1 *fwdResolHist;
+    int ptmin;
+    int ptmax;
+    TString obj;
 
-  TH1 *fJetRes_Pt_20_50_Eta_0_25;
-  TH1 *fJetRes_Pt_20_50_Eta_25_5;
-
-  TH1 *fJetRes_Pt_50_100_Eta_0_25;
-  TH1 *fJetRes_Pt_50_100_Eta_25_5;
-
-  TH1 *fJetRes_Pt_100_200_Eta_0_25;
-  TH1 *fJetRes_Pt_100_200_Eta_25_5;
-
-  TH1 *fJetRes_Pt_200_500_Eta_0_25;
-  TH1 *fJetRes_Pt_200_500_Eta_25_5;
-
-  TH1 *fJetRes_Pt_500_inf_Eta_0_25;
-  TH1 *fJetRes_Pt_500_inf_Eta_25_5;
-
+    resolPlot();
+    resolPlot(double ptdown, double ptup, TString object);
+    void set(double ptdown, double ptup, TString object);
+    print(){std::cout << ptmin << std::endl;}
 };
+
+
+resolPlot::resolPlot()
+{
+}
+
+resolPlot::resolPlot(double ptdown, double ptup, TString object)
+{
+    this->set(ptdown,ptup,object);
+}
+
+void resolPlot::set(double ptdown, double ptup, TString object){
+    ptmin = int(ptdown);
+    ptmax = int(ptup);
+    obj = object;
+
+    cenResolHist = new TH1D(obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_cen", obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_cen", 100, -2.0, 2.0);
+    fwdResolHist = new TH1D(obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_fwd", obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_fwd", 100, -2.0, 2.0);
+
+}
+
+void HistogramsCollection(std::vector<resolPlot> *histos, double ptmin, double ptmax, TString obj)
+{
+    double width;
+    double ptdown;
+    double ptup;
+    resolPlot ptemp;
+
+    for (int i = 0; i < Nbins; i++)
+    {
+        width = (ptmax - ptmin) / Nbins;
+        ptdown = TMath::Power(10,ptmin + i * width );
+        ptup = TMath::Power(10,ptmin + (i+1) * width );
+        ptemp.set(ptdown, ptup, obj);
+        histos->push_back(ptemp);
+    }
+}
 
 //------------------------------------------------------------------------------
 
@@ -67,93 +111,30 @@ class ExRootTreeReader;
 
 //------------------------------------------------------------------------------
 
-void BookHistograms(ExRootResult *result, TestPlots *plots)
+void BinLogX(TH1*h)
 {
-  TLegend *legend;
-  TPaveText *comment;
 
-  plots->fJetPT = result->AddHist1D(
-    "jet_pt", "p_{T}^{jet}",
-    "p_{T}^{jet}  GeV/c", "number of jets",
-    100, 0.0, 1000.0);
+   TAxis *axis = h->GetXaxis();
+   int bins = axis->GetNbins();
 
-  plots->fJetRes_Pt_20_50_Eta_0_25 = result->AddHist1D(
-    "jet_delta_pt_20_50_cen", "p_{T}^{truth,parton}/p_{T}^{jet} , 20 < p_{T} < 50 , 0 < | #eta | < 2.5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
+   Axis_t from = axis->GetXmin();
+   Axis_t to = axis->GetXmax();
+   Axis_t width = (to - from) / bins;
+   Axis_t *new_bins = new Axis_t[bins + 1];
 
-  plots->fJetRes_Pt_20_50_Eta_0_25->SetStats();
+   for (int i = 0; i <= bins; i++) {
+     new_bins[i] = TMath::Power(10, from + i * width);
 
-  plots->fJetRes_Pt_20_50_Eta_25_5 = result->AddHist1D(
-    "jet_delta_pt_20_50_fwd", "p_{T}^{truth,parton}/p_{T}^{jet} , 20 < p_{T} < 50 , 2.5 < | #eta | < 5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
+   }
+   axis->Set(bins, new_bins);
+   delete new_bins;
+} 
 
-  plots->fJetRes_Pt_20_50_Eta_25_5->SetStats();
-
-  plots->fJetRes_Pt_50_100_Eta_0_25 = result->AddHist1D(
-    "jet_delta_pt_50_100_cen", "p_{T}^{truth,parton}/p_{T}^{jet} , 50 < p_{T} < 100 , 0 < | #eta | < 2.5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_50_100_Eta_0_25->SetStats();
-
-  plots->fJetRes_Pt_50_100_Eta_25_5 = result->AddHist1D(
-    "jet_delta_pt_50_100_fwd", "p_{T}^{truth,parton}/p_{T}^{jet} , 50 < p_{T} < 100 , 2.5 < | #eta | < 5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_50_100_Eta_25_5->SetStats();
-
-
-  plots->fJetRes_Pt_100_200_Eta_0_25 = result->AddHist1D(
-    "jet_delta_pt_100_200_cen", "p_{T}^{truth,parton}/p_{T}^{jet} , 100 < p_{T} < 200 , 0 < | #eta | < 2.5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_100_200_Eta_0_25->SetStats();
-
-  plots->fJetRes_Pt_100_200_Eta_25_5 = result->AddHist1D(
-    "jet_delta_pt_100_200_fwd", "p_{T}^{truth,parton}/p_{T}^{jet} , 100 < p_{T} < 200 , 2.5 < | #eta | < 5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_100_200_Eta_25_5->SetStats();
-
-  plots->fJetRes_Pt_200_500_Eta_0_25 = result->AddHist1D(
-    "jet_delta_pt_200_500_cen", "p_{T}^{truth,parton}/p_{T}^{jet} , 200 < p_{T} < 500 , 0 < | #eta | < 2.5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_200_500_Eta_0_25->SetStats();
-
-  plots->fJetRes_Pt_200_500_Eta_25_5 = result->AddHist1D(
-    "jet_delta_pt_200_500_fwd", "p_{T}^{truth,parton}/p_{T}^{jet} , 200 < p_{T} < 500 , 2.5 < | #eta | < 5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_200_500_Eta_25_5->SetStats();
-
-  plots->fJetRes_Pt_500_inf_Eta_0_25 = result->AddHist1D(
-    "jet_delta_pt_500_1000_cen", "p_{T}^{truth,parton}/p_{T}^{jet} , 500 < p_{T} < 1000, 0 < | #eta | < 2.5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_500_inf_Eta_0_25->SetStats();
-
-  plots->fJetRes_Pt_500_inf_Eta_25_5 = result->AddHist1D(
-    "jet_delta_pt_500_1000_fwd", "p_{T}^{truth,parton}/p_{T}^{jet} , 500 < p_{T} < 1000, 2.5 < | #eta | < 5 ",
-    "p_{T}^{truth,parton}/p_{T}^{jet}", "number of jets",
-    100, 0.0, 2.0);
-
-  plots->fJetRes_Pt_500_inf_Eta_25_5->SetStats();
-
-
-}
 
 //------------------------------------------------------------------------------
 
-void AnalyseEvents(ExRootTreeReader *treeReader, TestPlots *plots)
+
+void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
 {
   TClonesArray *branchParticle = treeReader->UseBranch("Particle");
   TClonesArray *branchGenJet = treeReader->UseBranch("GenJet");
@@ -165,7 +146,7 @@ void AnalyseEvents(ExRootTreeReader *treeReader, TestPlots *plots)
 
   Jet *jet, *genjet;
   GenParticle *particle;
-  TObject *object;
+  //TObject *object;
 
   TLorentzVector jetMomentum, genJetMomentum, bestGenJetMomentum;
 
@@ -173,15 +154,15 @@ void AnalyseEvents(ExRootTreeReader *treeReader, TestPlots *plots)
   Float_t pt, eta;
   Long64_t entry;
 
-  Int_t i, j;
+  Int_t i, j, bin;
 
   // Loop over all events
-  for(entry = 0; entry < allEntries; ++entry)
+  for(entry = 0; entry < 100; ++entry) //allEntries; ++entry)
   {
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    if(entry%500 == 0) cout << "Event number: "<< entry <<endl;
+    if(entry%10 == 0) cout << "Event number: "<< entry <<endl;
 
     // Loop over all reconstructed jets in event
     for(i = 0; i < branchJet->GetEntriesFast(); ++i)
@@ -189,8 +170,6 @@ void AnalyseEvents(ExRootTreeReader *treeReader, TestPlots *plots)
 
       jet = (Jet*) branchJet->At(i);
       jetMomentum = jet->P4();
-
-      plots->fJetPT->Fill(jetMomentum.Pt());
 
       deltaR = 999;
 
@@ -218,22 +197,19 @@ void AnalyseEvents(ExRootTreeReader *treeReader, TestPlots *plots)
         pt  = jetMomentum.Pt();
         eta = TMath::Abs(jetMomentum.Eta());
 
-
-        if(pt > 20.0 && pt < 50.0 && eta > 0.0 && eta < 2.5) plots -> fJetRes_Pt_20_50_Eta_0_25->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-        if(pt > 20.0 && pt < 50.0 && eta > 2.5 && eta < 5.0) plots -> fJetRes_Pt_20_50_Eta_25_5->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-
-        if(pt > 50.0 && pt < 100.0 && eta > 0.0 && eta < 2.5) plots -> fJetRes_Pt_50_100_Eta_0_25->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-        if(pt > 50.0 && pt < 100.0 && eta > 2.5 && eta < 5.0) plots -> fJetRes_Pt_50_100_Eta_25_5->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-
-        if(pt > 100.0 && pt < 200.0 && eta > 0.0 && eta < 2.5) plots -> fJetRes_Pt_100_200_Eta_0_25->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-        if(pt > 100.0 && pt < 200.0 && eta > 2.5 && eta < 5.0) plots -> fJetRes_Pt_100_200_Eta_25_5->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-
-        if(pt > 200.0 && pt < 500.0 && eta > 0.0 && eta < 2.5) plots -> fJetRes_Pt_200_500_Eta_0_25->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-        if(pt > 200.0 && pt < 500.0 && eta > 2.5 && eta < 5.0) plots -> fJetRes_Pt_200_500_Eta_25_5->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-
-        if(pt > 500.0               && eta > 0.0 && eta < 2.5) plots -> fJetRes_Pt_500_inf_Eta_0_25->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-        if(pt > 500.0               && eta > 2.5 && eta < 5.0) plots -> fJetRes_Pt_500_inf_Eta_25_5->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
-
+        for (bin = 0; bin < Nbins; bin++)
+        {
+            //std::cout << "ptmin : " << std::endl;
+            //std::cout << "histos " << typeid(histos).name() << '\n';
+            //std::cout << "*histos " << typeid(*histos).name() << '\n';
+            //histos[bin]->();
+            //std::cout << histos->at(bin).ptmin << std::endl;
+            if(pt > histos->at(bin).ptmin && pt < histos->at(bin).ptmax && eta > 0.0 && eta < 2.5) 
+            {
+                //std::cout << histos->at(bin).ptmin << std::endl;
+                histos->at(bin).cenResolHist->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
+            }
+        }
       }
     }
   }
@@ -245,24 +221,48 @@ void Validation(const char *inputFile, const char *outputFile)
 {
   gSystem->Load("libDelphes");
 
+  std::cout << "input file : " << inputFile << " " << " , output file : " << outputFile << std::endl;
+
   TChain *chain = new TChain("Delphes");
   chain->Add(inputFile);
 
   ExRootTreeReader *treeReader = new ExRootTreeReader(chain);
-  ExRootResult *result = new ExRootResult();
+  //ExRootResult *result = new ExRootResult();
 
-  TestPlots *plots = new TestPlots;
+  //TestPlots *plots = new TestPlots;
+  //BookHistograms(result, plots);
 
-  BookHistograms(result, plots);
+  //jethistos = 
+  //std::vector<resolPlot> plots = HistogramsCollection ( TMath::Log10(ptmin), TMath::Log10(ptmax), Nbins, "jets"); 
 
+  std::vector<resolPlot> plots;
+  HistogramsCollection(&plots, 1, 3, "jets");
+
+  std::cout << "reading " << std::endl;
+
+  for (int i = 0; i < Nbins; i++)
+  {
+      std::cout << plots[i].ptmin <<" " << plots[i].ptmax <<  std::endl;
+  }
+  
+  GetJetsEres( &plots, treeReader);
+  for (int i = 0; i < Nbins; i++)
+  {
+
+      std::cout << "          " << typeid(plots[i].cenResolHist).name() << '\n';
+      std::cout << "entries : " << plots[i].cenResolHist->GetEntries() << std::endl;
+  }
+
+  /*
   AnalyseEvents(treeReader, plots);
 
   result->Write(outputFile);
+  */
 
   cout << "** Exiting..." << endl;
 
-  delete plots;
-  delete result;
+  //delete plots;
+  //delete result;
   delete treeReader;
   delete chain;
 }
