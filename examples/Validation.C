@@ -44,6 +44,7 @@ class ExRootResult;
 #include <TMath.h>
 #include <iostream>
 #include "TGraph.h"
+#include "TGraphErrors.h"
 #include <typeinfo>
 #include "TLorentzVector.h"
 
@@ -51,7 +52,7 @@ class ExRootResult;
 
 double ptrangemin = 10;
 double ptrangemax = 1000;
-static const int Nbins = 10;
+static const int Nbins = 100;
 
 struct resolPlot
 {
@@ -64,7 +65,7 @@ struct resolPlot
     resolPlot();
     resolPlot(double ptdown, double ptup, TString object);
     void set(double ptdown, double ptup, TString object);
-    print(){std::cout << ptmin << std::endl;}
+    void print(){std::cout << ptmin << std::endl;}
 };
 
 
@@ -133,6 +134,99 @@ void BinLogX(TH1*h)
 
 //------------------------------------------------------------------------------
 
+template<typename T> 
+std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeReader *treeReader)
+{
+  TClonesArray *branchParticle = treeReader->UseBranch("Particle");
+  TClonesArray *branchReco = treeReader->UseBranch(branch);
+
+  Long64_t allEntries = treeReader->GetEntries();
+
+  cout << "** Chain contains " << allEntries << " events" << endl;
+
+  //Jet *jet, *genjet;
+  GenParticle *particle;
+  //TObject *reco;
+
+  TLorentzVector recoMomentum, genMomentum, bestRecoMomentum;
+
+  Float_t deltaR;
+  Float_t pt, eta;
+  Long64_t entry;
+
+  Int_t i, j;
+
+  TH1D histGenPt  = TH1D("gen spectra Pt","gen spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D histRecoPt = TH1D("reco spectra Pt","reco spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D histGenEta  = TH1D("gen spectra Eta","gen spectra Eta", 12, -3, 3);
+  TH1D histRecoEta = TH1D("reco spectra Eta","reco spectra Eta", 12, -3, 3);
+
+
+  BinLogX(&histGenPt);
+  BinLogX(&histRecoPt);
+
+  // Loop over all events
+  for(entry = 0; entry < allEntries; ++entry)
+  {
+    // Load selected branches with data from specified event
+    treeReader->ReadEntry(entry);
+
+    if(entry%10000 == 0) cout << "Event number: "<< entry <<endl;
+
+    // Loop over all reconstructed jets in event
+    for(i = 0; i < branchParticle->GetEntriesFast(); ++i)
+    {
+
+      particle = (GenParticle*) branchParticle->At(i);
+      genMomentum = particle->P4();
+
+      deltaR = 999;
+   
+      if (particle->PID == pdgID && genMomentum.Pt() > 1)
+      {
+    
+        // Loop over all reco object in event
+        for(j = 0; j < branchReco->GetEntriesFast(); ++j)
+        {
+          recoObj = (T*)branchReco->At(j);
+          recoMomentum = recoObj->P4();
+          // this is simply to avoid warnings from initial state particle
+          // having infite rapidity ...
+     	  //if(Momentum.Px() == 0 && genMomentum.Py() == 0) continue;
+     
+          // take the closest parton candidate
+          if(genMomentum.DeltaR(recoMomentum) < deltaR)
+          {
+            deltaR = genMomentum.DeltaR(recoMomentum);
+            bestRecoMomentum = recoMomentum;
+          }
+        }
+
+        pt  = genMomentum.Pt();
+        eta = genMomentum.Eta();
+
+        histGenPt.Fill(pt);
+        histGenEta.Fill(eta);
+
+        if(deltaR < 0.5)
+        {
+          histRecoPt.Fill(pt);
+          histRecoEta.Fill(eta); 
+        }
+      }
+    }
+  }
+
+  std::pair <TH1D,TH1D> histos;
+
+  histRecoPt.Divide(&histGenPt);
+  histRecoEta.Divide(&histGenEta);
+
+  histos.first = histRecoPt;
+  histos.second = histRecoEta;
+
+  return histos;
+}
 
 void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
 {
@@ -162,7 +256,7 @@ void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    if(entry%10 == 0) cout << "Event number: "<< entry <<endl;
+    if(entry%10000 == 0) cout << "Event number: "<< entry <<endl;
 
     // Loop over all reconstructed jets in event
     for(i = 0; i < branchJet->GetEntriesFast(); ++i)
@@ -207,7 +301,7 @@ void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
             if(pt > histos->at(bin).ptmin && pt < histos->at(bin).ptmax && eta > 0.0 && eta < 2.5) 
             {
                 //std::cout << histos->at(bin).ptmin << std::endl;
-                histos->at(bin).cenResolHist->Fill(bestGenJetMomentum.Pt()/jetMomentum.Pt());
+                histos->at(bin).cenResolHist->Fill((bestGenJetMomentum.E()-jetMomentum.E())/bestGenJetMomentum.E());
             }
         }
       }
@@ -215,11 +309,25 @@ void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
   }
 }
 
+TGraphErrors EresGraph(std::vector<resolPlot> *histos)
+{
+    Int_t bin;
+    TGraphErrors gr = TGraphErrors(Nbins);
+    std::cout << "Resolutions " << std::endl;
+    for (bin = 0; bin < Nbins; bin++)
+    {
+        std::cout << histos->at(bin).ptmin << " " << histos->at(bin).ptmax << " "  << histos->at(bin).cenResolHist->GetRMS() << std::endl;
+        gr.SetPoint(bin,(histos->at(bin).ptmin+histos->at(bin).ptmax)/2.0, histos->at(bin).cenResolHist->GetRMS());
+        gr.SetPointError(bin,0, histos->at(bin).cenResolHist->GetRMSError());
+    }
+    return gr;
+}
+
 //------------------------------------------------------------------------------
 
 void Validation(const char *inputFile, const char *outputFile)
 {
-  gSystem->Load("libDelphes");
+  //gSystem->Load("libDelphes");
 
   std::cout << "input file : " << inputFile << " " << " , output file : " << outputFile << std::endl;
 
@@ -253,6 +361,22 @@ void Validation(const char *inputFile, const char *outputFile)
       std::cout << "entries : " << plots[i].cenResolHist->GetEntries() << std::endl;
   }
 
+  TGraphErrors gr = EresGraph(&plots);
+
+  TString elecs = "Electron";
+  int elID = 11;
+
+  Electron *elec;
+
+  std::pair <TH1D,TH1D> histos = GetEff(elecs, elec, elID, treeReader);
+
+  TFile *fout = new TFile(outputFile,"recreate");
+  gr.Write();
+  histos.first.Write();
+  histos.second.Write();
+  fout->Write();
+
+  
   /*
   AnalyseEvents(treeReader, plots);
 
