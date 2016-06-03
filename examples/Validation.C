@@ -51,7 +51,7 @@ class ExRootResult;
 //------------------------------------------------------------------------------
 
 double ptrangemin = 10;
-double ptrangemax = 1000;
+double ptrangemax = 10000;
 static const int Nbins = 100;
 
 struct resolPlot
@@ -156,10 +156,10 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
 
   Int_t i, j;
 
-  TH1D histGenPt  = TH1D("gen spectra Pt","gen spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
-  TH1D histRecoPt = TH1D("reco spectra Pt","reco spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
-  TH1D histGenEta  = TH1D("gen spectra Eta","gen spectra Eta", 12, -3, 3);
-  TH1D histRecoEta = TH1D("reco spectra Eta","reco spectra Eta", 12, -3, 3);
+  TH1D histGenPt  = TH1D(branch+" gen spectra Pt",branch+" gen spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D histRecoPt = TH1D(branch+" reco spectra Pt",branch+" reco spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D histGenEta  = TH1D(branch+" gen spectra Eta",branch+" gen spectra Eta", 12, -3, 3);
+  TH1D histRecoEta = TH1D(branch+" reco spectra Eta",branch+" reco spectra Eta", 12, -3, 3);
 
 
   BinLogX(&histGenPt);
@@ -228,6 +228,89 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
   return histos;
 }
 
+template<typename T>
+void GetEres(std::vector<resolPlot> *histos, TString branch, T* recoObj, int pdgID, ExRootTreeReader *treeReader)
+{
+  TClonesArray *branchParticle = treeReader->UseBranch("Particle");
+  TClonesArray *branchReco = treeReader->UseBranch(branch);
+
+  Long64_t allEntries = treeReader->GetEntries();
+
+  cout << "** Chain contains " << allEntries << " events" << endl;
+
+  GenParticle *particle;
+  //TObject *object;
+
+  TLorentzVector recoMomentum, genMomentum, bestGenMomentum;
+
+  Float_t deltaR;
+  Float_t pt, eta;
+  Long64_t entry;
+
+  Int_t i, j, bin;
+
+  // Loop over all events
+  for(entry = 0; entry < allEntries; ++entry)
+  {
+    // Load selected branches with data from specified event
+    treeReader->ReadEntry(entry);
+
+    if(entry%10000 == 0) cout << "Event number: "<< entry <<endl;
+
+    // Loop over all reconstructed jets in event
+    for(i = 0; i < branchReco->GetEntriesFast(); ++i)
+    {
+
+      recoObj = (T*) branchReco->At(i);
+      recoMomentum = recoObj->P4();
+
+      deltaR = 999;
+
+     // Loop over all hard partons in event
+     for(j = 0; j < branchParticle->GetEntriesFast(); ++j)
+     {
+        particle = (GenParticle*) branchParticle->At(j);
+
+        if (particle->PID == pdgID)
+        {
+            genMomentum = particle->P4();
+
+            // this is simply to avoid warnings from initial state particle
+            // having infite rapidity ...
+    	    if(genMomentum.Px() == 0 && genMomentum.Py() == 0) continue;
+    
+            // take the closest parton candidate
+            if(genMomentum.DeltaR(recoMomentum) < deltaR)
+            {
+               deltaR = genMomentum.DeltaR(recoMomentum);
+               bestGenMomentum = genMomentum;
+            }
+        }
+      }
+
+      if(deltaR < 0.3)
+      {
+        pt  = bestGenMomentum.Pt();
+        eta = TMath::Abs(bestGenMomentum.Eta());
+
+        for (bin = 0; bin < Nbins; bin++)
+        {
+            //std::cout << "ptmin : " << std::endl;
+            //std::cout << "histos " << typeid(histos).name() << '\n';
+            //std::cout << "*histos " << typeid(*histos).name() << '\n';
+            //histos[bin]->();
+            //std::cout << histos->at(bin).ptmin << std::endl;
+            if(pt > histos->at(bin).ptmin && pt < histos->at(bin).ptmax && eta > 0.0 && eta < 2.5) 
+            {
+                //std::cout << histos->at(bin).ptmin << std::endl;
+                histos->at(bin).cenResolHist->Fill((bestGenMomentum.E()-recoMomentum.E())/bestGenMomentum.E());
+            }
+        }
+      }
+    }
+  }
+}
+
 void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
 {
   TClonesArray *branchParticle = treeReader->UseBranch("Particle");
@@ -288,8 +371,8 @@ void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
 
       if(deltaR < 0.3)
       {
-        pt  = jetMomentum.Pt();
-        eta = TMath::Abs(jetMomentum.Eta());
+        pt  = genJetMomentum.Pt();
+        eta = TMath::Abs(genJetMomentum.Eta());
 
         for (bin = 0; bin < Nbins; bin++)
         {
@@ -346,20 +429,7 @@ void Validation(const char *inputFile, const char *outputFile)
   std::vector<resolPlot> plots;
   HistogramsCollection(&plots, 1, 3, "jets");
 
-  std::cout << "reading " << std::endl;
-
-  for (int i = 0; i < Nbins; i++)
-  {
-      std::cout << plots[i].ptmin <<" " << plots[i].ptmax <<  std::endl;
-  }
-  
   GetJetsEres( &plots, treeReader);
-  for (int i = 0; i < Nbins; i++)
-  {
-
-      std::cout << "          " << typeid(plots[i].cenResolHist).name() << '\n';
-      std::cout << "entries : " << plots[i].cenResolHist->GetEntries() << std::endl;
-  }
 
   TGraphErrors gr = EresGraph(&plots);
 
@@ -370,10 +440,44 @@ void Validation(const char *inputFile, const char *outputFile)
 
   std::pair <TH1D,TH1D> histos = GetEff(elecs, elec, elID, treeReader);
 
+  TString tracks = "Track";
+  Track *track;
+
+  std::pair <TH1D,TH1D> histos_track = GetEff(tracks, track, elID, treeReader);
+
+
+  // Electron Energy Resolution
+  std::vector<resolPlot> plots_el;
+  HistogramsCollection(&plots_el, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electrons");
+  GetEres( &plots_el, "Electron", elec, 11, treeReader);
+  TGraphErrors gr_el = EresGraph(&plots_el);
+  gr_el.SetName("Electron");
+
+  // Electron Track Energy Resolution
+  std::vector<resolPlot> plots_eltrack;
+  HistogramsCollection(&plots_eltrack, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTracks");
+  GetEres( &plots_eltrack, "Track", track, 11, treeReader);
+  TGraphErrors gr_eltrack = EresGraph(&plots_eltrack);
+  gr_eltrack.SetName("ElectronTracks");
+
+  // Electron Tower Energy Resolution
+  Tower *tower;
+  std::vector<resolPlot> plots_eltower;
+  HistogramsCollection(&plots_eltower, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTower");
+  GetEres( &plots_eltower, "Tower", tower, 11, treeReader);
+  TGraphErrors gr_eltower = EresGraph(&plots_eltower);
+  gr_eltower.SetName("ElectronTower");
+
+
   TFile *fout = new TFile(outputFile,"recreate");
   gr.Write();
   histos.first.Write();
   histos.second.Write();
+  histos_track.first.Write();
+  histos_track.second.Write();
+  gr_el.Write();
+  gr_eltrack.Write();
+  gr_eltower.Write();
   fout->Write();
 
   
