@@ -50,16 +50,16 @@ class ExRootResult;
 
 //------------------------------------------------------------------------------
 
-double ptrangemin = 10;
-double ptrangemax = 10000;
+double ptrangemin = 5;
+double ptrangemax = 100;
 static const int Nbins = 100;
 
 struct resolPlot
 {
     TH1 *cenResolHist;
     TH1 *fwdResolHist;
-    int ptmin;
-    int ptmax;
+    double ptmin;
+    double ptmax;
     TString obj;
 
     resolPlot();
@@ -79,12 +79,12 @@ resolPlot::resolPlot(double ptdown, double ptup, TString object)
 }
 
 void resolPlot::set(double ptdown, double ptup, TString object){
-    ptmin = int(ptdown);
-    ptmax = int(ptup);
+    ptmin = ptdown;
+    ptmax = ptup;
     obj = object;
 
-    cenResolHist = new TH1D(obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_cen", obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_cen", 100, -2.0, 2.0);
-    fwdResolHist = new TH1D(obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_fwd", obj+"_delta_pt_"+Form("%d",ptmin)+"_"+Form("%d",ptmax)+"_fwd", 100, -2.0, 2.0);
+    cenResolHist = new TH1D(obj+"_delta_pt_"+Form("%4.2f",ptmin)+"_"+Form("%4.2f",ptmax)+"_cen", obj+"_delta_pt_"+Form("%4.2f",ptmin)+"_"+Form("%4.2f",ptmax)+"_cen", 100, -2.0, 2.0);
+    fwdResolHist = new TH1D(obj+"_delta_pt_"+Form("%4.2f",ptmin)+"_"+Form("%4.2f",ptmax)+"_fwd", obj+"_delta_pt_"+Form("%4.2f",ptmin)+"_"+Form("%4.2f",ptmax)+"_fwd", 100, -2.0, 2.0);
 
 }
 
@@ -255,7 +255,7 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, T* recoObj, int pdg
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    if(entry%10000 == 0) cout << "Event number: "<< entry <<endl;
+    if(entry%100000 == 0) cout << "Event number: "<< entry <<endl;
 
     // Loop over all reconstructed jets in event
     for(i = 0; i < branchReco->GetEntriesFast(); ++i)
@@ -303,7 +303,8 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, T* recoObj, int pdg
             if(pt > histos->at(bin).ptmin && pt < histos->at(bin).ptmax && eta > 0.0 && eta < 2.5) 
             {
                 //std::cout << histos->at(bin).ptmin << std::endl;
-                histos->at(bin).cenResolHist->Fill((bestGenMomentum.E()-recoMomentum.E())/bestGenMomentum.E());
+                if (eta < 0.5) {histos->at(bin).cenResolHist->Fill((bestGenMomentum.E()-recoMomentum.E())/bestGenMomentum.E());}
+                else if (eta < 2.5) {histos->at(bin).fwdResolHist->Fill((bestGenMomentum.E()-recoMomentum.E())/bestGenMomentum.E());}
             }
         }
       }
@@ -392,16 +393,22 @@ void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
   }
 }
 
-TGraphErrors EresGraph(std::vector<resolPlot> *histos)
+TGraphErrors EresGraph(std::vector<resolPlot> *histos, bool central)
 {
     Int_t bin;
     TGraphErrors gr = TGraphErrors(Nbins);
-    std::cout << "Resolutions " << std::endl;
     for (bin = 0; bin < Nbins; bin++)
     {
-        std::cout << histos->at(bin).ptmin << " " << histos->at(bin).ptmax << " "  << histos->at(bin).cenResolHist->GetRMS() << std::endl;
-        gr.SetPoint(bin,(histos->at(bin).ptmin+histos->at(bin).ptmax)/2.0, histos->at(bin).cenResolHist->GetRMS());
-        gr.SetPointError(bin,0, histos->at(bin).cenResolHist->GetRMSError());
+        if (central == true) 
+        {
+            gr.SetPoint(bin,(histos->at(bin).ptmin+histos->at(bin).ptmax)/2.0, histos->at(bin).cenResolHist->GetRMS());
+            gr.SetPointError(bin,0, histos->at(bin).cenResolHist->GetRMSError());
+        }
+        else 
+        {
+            gr.SetPoint(bin,(histos->at(bin).ptmin+histos->at(bin).ptmax)/2.0, histos->at(bin).fwdResolHist->GetRMS());
+            gr.SetPointError(bin,0, histos->at(bin).fwdResolHist->GetRMSError());
+        }
     }
     return gr;
 }
@@ -431,7 +438,7 @@ void Validation(const char *inputFile, const char *outputFile)
 
   GetJetsEres( &plots, treeReader);
 
-  TGraphErrors gr = EresGraph(&plots);
+  TGraphErrors gr = EresGraph(&plots, true);
 
   TString elecs = "Electron";
   int elID = 11;
@@ -450,14 +457,14 @@ void Validation(const char *inputFile, const char *outputFile)
   std::vector<resolPlot> plots_el;
   HistogramsCollection(&plots_el, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electrons");
   GetEres( &plots_el, "Electron", elec, 11, treeReader);
-  TGraphErrors gr_el = EresGraph(&plots_el);
+  TGraphErrors gr_el = EresGraph(&plots_el, true);
   gr_el.SetName("Electron");
 
   // Electron Track Energy Resolution
   std::vector<resolPlot> plots_eltrack;
   HistogramsCollection(&plots_eltrack, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTracks");
   GetEres( &plots_eltrack, "Track", track, 11, treeReader);
-  TGraphErrors gr_eltrack = EresGraph(&plots_eltrack);
+  TGraphErrors gr_eltrack = EresGraph(&plots_eltrack, true);
   gr_eltrack.SetName("ElectronTracks");
 
   // Electron Tower Energy Resolution
@@ -465,7 +472,7 @@ void Validation(const char *inputFile, const char *outputFile)
   std::vector<resolPlot> plots_eltower;
   HistogramsCollection(&plots_eltower, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTower");
   GetEres( &plots_eltower, "Tower", tower, 11, treeReader);
-  TGraphErrors gr_eltower = EresGraph(&plots_eltower);
+  TGraphErrors gr_eltower = EresGraph(&plots_eltower, true);
   gr_eltower.SetName("ElectronTower");
 
 
