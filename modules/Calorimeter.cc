@@ -475,8 +475,6 @@ void Calorimeter::FinalizeTower()
   ecalSigma = fECalResolutionFormula->Eval(0.0, fTowerEta, 0.0, ecalEnergy);
   hcalSigma = fHCalResolutionFormula->Eval(0.0, fTowerEta, 0.0, hcalEnergy);
 
-  if (ecalSigma/ (double) ecalEnergy > 0.1) {std::cout << "E : " << ecalEnergy << ", eta : " << fTowerEta << " S : " << 100 * ecalSigma/ (double) ecalEnergy << " " << std::endl;}
-
   if(ecalEnergy < fECalEnergyMin || ecalEnergy < fECalEnergySignificanceMin*ecalSigma) ecalEnergy = 0.0;
   if(hcalEnergy < fHCalEnergyMin || hcalEnergy < fHCalEnergySignificanceMin*hcalSigma) hcalEnergy = 0.0;
 
@@ -579,7 +577,9 @@ void Calorimeter::FinalizeTower()
   {
     weightTrack = (fECalTrackSigma > 0.0) ? 1 / (fECalTrackSigma*fECalTrackSigma) : 0.0;
     weightCalo  = (ecalSigma > 0.0) ? 1 / (ecalSigma*ecalSigma) : 0.0;
-  
+ 
+    if (pt > 1 && pt < 200 && abs(eta) < 0.5 ) std::cout << "pt : " << pt << " eta " << eta << " track " << fECalTrackSigma << " calo " << ecalSigma << std::endl;
+ 
     bestEnergyEstimate = (weightTrack*fECalTrackEnergy + weightCalo*ecalEnergy) / (weightTrack + weightCalo); 
     rescaleFactor = bestEnergyEstimate/fECalTrackEnergy;
 

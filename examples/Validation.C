@@ -51,7 +51,7 @@ class ExRootResult;
 //------------------------------------------------------------------------------
 
 double ptrangemin = 5;
-double ptrangemax = 100;
+double ptrangemax = 1000;
 static const int Nbins = 100;
 
 struct resolPlot
@@ -229,8 +229,9 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
 }
 
 template<typename T>
-void GetEres(std::vector<resolPlot> *histos, TString branch, T* recoObj, int pdgID, ExRootTreeReader *treeReader)
+void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTreeReader *treeReader)
 {
+  T* recoObj;
   TClonesArray *branchParticle = treeReader->UseBranch("Particle");
   TClonesArray *branchReco = treeReader->UseBranch(branch);
 
@@ -456,22 +457,21 @@ void Validation(const char *inputFile, const char *outputFile)
   // Electron Energy Resolution
   std::vector<resolPlot> plots_el;
   HistogramsCollection(&plots_el, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electrons");
-  GetEres( &plots_el, "Electron", elec, 11, treeReader);
+  GetEres<Electron>( &plots_el, "Electron", 11, treeReader);
   TGraphErrors gr_el = EresGraph(&plots_el, true);
   gr_el.SetName("Electron");
 
   // Electron Track Energy Resolution
   std::vector<resolPlot> plots_eltrack;
   HistogramsCollection(&plots_eltrack, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTracks");
-  GetEres( &plots_eltrack, "Track", track, 11, treeReader);
+  GetEres<Track>( &plots_eltrack, "Track", 11, treeReader);
   TGraphErrors gr_eltrack = EresGraph(&plots_eltrack, true);
   gr_eltrack.SetName("ElectronTracks");
 
   // Electron Tower Energy Resolution
-  Tower *tower;
   std::vector<resolPlot> plots_eltower;
   HistogramsCollection(&plots_eltower, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTower");
-  GetEres( &plots_eltower, "Tower", tower, 11, treeReader);
+  GetEres<Tower>( &plots_eltower, "Tower", 11, treeReader);
   TGraphErrors gr_eltower = EresGraph(&plots_eltower, true);
   gr_eltower.SetName("ElectronTower");
 

@@ -158,11 +158,11 @@ module MomentumSmearing ElectronMomentumSmearing {
 
   # resolution formula for electrons
   # based on arXiv:1405.6569
-  set ResolutionFormula {                  (abs(eta) <= 0.5) * (pt > 0.1) * sqrt(0.06^2 + pt^2*1.3e-3^2) +
-                         (abs(eta) > 0.5 && abs(eta) <= 1.5) * (pt > 0.1) * sqrt(0.10^2 + pt^2*1.7e-3^2) +
-                         (abs(eta) > 1.5 && abs(eta) <= 2.5) * (pt > 0.1) * sqrt(0.25^2 + pt^2*3.1e-3^2)}
-}
+  set ResolutionFormula {                    (abs(eta) <= 0.5) * (pt > 0.1) * sqrt(0.03^2 + pt^2*1.3e-3^2) +
+                           (abs(eta) > 0.5 && abs(eta) <= 1.5) * (pt > 0.1) * sqrt(0.05^2 + pt^2*1.7e-3^2) +
+                           (abs(eta) > 1.5 && abs(eta) <= 2.5) * (pt > 0.1) * sqrt(0.15^2 + pt^2*3.1e-3^2)}
 
+}
 ###############################
 # Momentum resolution for muons
 ###############################
@@ -209,7 +209,7 @@ module Calorimeter Calorimeter {
   set ECalEnergyMin 0.5
   set HCalEnergyMin 1.0
 
-  set ECalEnergySignificanceMin 1.0
+  set ECalEnergySignificanceMin 2.0
   set HCalEnergySignificanceMin 1.0
 
   set SmearTowerCenter true
@@ -347,9 +347,9 @@ module Efficiency ElectronEfficiency {
   # set EfficiencyFormula {efficiency formula as a function of eta and pt}
 
   # efficiency formula for electrons
-  set EfficiencyFormula {                                      (pt <= 10.0) * (0.00) +
-                                           (abs(eta) <= 1.5) * (pt > 10.0)  * (0.95) +
-                         (abs(eta) > 1.5 && abs(eta) <= 2.5) * (pt > 10.0)  * (0.85) +
+  set EfficiencyFormula {                                      (pt <= 5.0) * (0.00) +
+                                           (abs(eta) <= 1.5) * (pt > 5.0)  * (0.95) +
+                         (abs(eta) > 1.5 && abs(eta) <= 2.5) * (pt > 5.0)  * (0.85) +
                          (abs(eta) > 2.5)                                   * (0.00)}
 }
 
