@@ -185,7 +185,7 @@ void fillPartons(int type, double ee_max, Pythia8::Event& event, Pythia8::Partic
   cThe = 2. * rndm.flat() - 1.;
   sThe = Pythia8::sqrtpos(1. - cThe * cThe);
   phi = 2. * M_PI * rndm.flat();
-  ee = pow(10,log10(ee_max)*rndm.flat());
+  ee = pow(10,1+(log10(ee_max)-1)*rndm.flat());
   double mm = pdt.m0(type);
   double pp = Pythia8::sqrtpos(ee*ee - mm*mm);
   if (type == 21)

@@ -37,6 +37,7 @@ class ExRootTreeReader;
 class ExRootResult;
 #endif
 
+#include "TCanvas.h"
 #include "TSystem.h"
 #include <TH1.h>
 #include "TString.h"
@@ -51,8 +52,8 @@ class ExRootResult;
 //------------------------------------------------------------------------------
 
 double ptrangemin = 5;
-double ptrangemax = 1000;
-static const int Nbins = 100;
+double ptrangemax = 10000;
+static const int Nbins = 50;
 
 struct resolPlot
 {
@@ -135,7 +136,7 @@ void BinLogX(TH1*h)
 //------------------------------------------------------------------------------
 
 template<typename T> 
-std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeReader *treeReader)
+std::pair<TH1D*, TH1D*> GetEff(TString branch, int pdgID, ExRootTreeReader *treeReader)
 {
   TClonesArray *branchParticle = treeReader->UseBranch("Particle");
   TClonesArray *branchReco = treeReader->UseBranch(branch);
@@ -144,9 +145,8 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
 
   cout << "** Chain contains " << allEntries << " events" << endl;
 
-  //Jet *jet, *genjet;
   GenParticle *particle;
-  //TObject *reco;
+  T *recoObj;
 
   TLorentzVector recoMomentum, genMomentum, bestRecoMomentum;
 
@@ -156,14 +156,14 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
 
   Int_t i, j;
 
-  TH1D histGenPt  = TH1D(branch+" gen spectra Pt",branch+" gen spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
-  TH1D histRecoPt = TH1D(branch+" reco spectra Pt",branch+" reco spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
-  TH1D histGenEta  = TH1D(branch+" gen spectra Eta",branch+" gen spectra Eta", 12, -3, 3);
-  TH1D histRecoEta = TH1D(branch+" reco spectra Eta",branch+" reco spectra Eta", 12, -3, 3);
+  TH1D *histGenPt = new TH1D(branch+" gen spectra Pt",branch+" gen spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D *histRecoPt = new TH1D(branch+" reco spectra Pt",branch+" reco spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D *histGenEta  = new TH1D(branch+" gen spectra Eta",branch+" gen spectra Eta", 12, -3, 3);
+  TH1D *histRecoEta = new TH1D(branch+" reco spectra Eta",branch+" reco spectra Eta", 12, -3, 3);
 
 
-  BinLogX(&histGenPt);
-  BinLogX(&histRecoPt);
+  BinLogX(histGenPt);
+  BinLogX(histRecoPt);
 
   // Loop over all events
   for(entry = 0; entry < allEntries; ++entry)
@@ -171,7 +171,7 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    if(entry%10000 == 0) cout << "Event number: "<< entry <<endl;
+    if(entry%1000000 == 0) cout << "Event number: "<< entry <<endl;
 
     // Loop over all reconstructed jets in event
     for(i = 0; i < branchParticle->GetEntriesFast(); ++i)
@@ -182,7 +182,7 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
 
       deltaR = 999;
    
-      if (particle->PID == pdgID && genMomentum.Pt() > 1)
+      if (particle->PID == pdgID && genMomentum.Pt() > 0.001)
       {
     
         // Loop over all reco object in event
@@ -205,25 +205,28 @@ std::pair <TH1D,TH1D> GetEff(TString branch, T* recoObj, int pdgID, ExRootTreeRe
         pt  = genMomentum.Pt();
         eta = genMomentum.Eta();
 
-        histGenPt.Fill(pt);
-        histGenEta.Fill(eta);
+        histGenPt->Fill(pt);
+        histGenEta->Fill(eta);
 
-        if(deltaR < 0.5)
+        if(deltaR < 0.3)
         {
-          histRecoPt.Fill(pt);
-          histRecoEta.Fill(eta); 
+          histRecoPt->Fill(pt);
+          histRecoEta->Fill(eta); 
         }
       }
     }
   }
 
-  std::pair <TH1D,TH1D> histos;
 
-  histRecoPt.Divide(&histGenPt);
-  histRecoEta.Divide(&histGenEta);
+  std::pair<TH1D*,TH1D*> histos; 
+
+  histRecoPt->Divide(histGenPt);
+  histRecoEta->Divide(histGenEta);
 
   histos.first = histRecoPt;
   histos.second = histRecoEta;
+
+  std::cout << "entries : " << histos.first->GetEntries() << std::endl;
 
   return histos;
 }
@@ -272,7 +275,7 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTr
      {
         particle = (GenParticle*) branchParticle->At(j);
 
-        if (particle->PID == pdgID)
+        if (particle->PID == pdgID && particle->Status == 1)
         {
             genMomentum = particle->P4();
 
@@ -289,7 +292,7 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTr
         }
       }
 
-      if(deltaR < 0.3)
+      if(deltaR < 0.1)
       {
         pt  = bestGenMomentum.Pt();
         eta = TMath::Abs(bestGenMomentum.Eta());
@@ -315,7 +318,6 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTr
 
 void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
 {
-  TClonesArray *branchParticle = treeReader->UseBranch("Particle");
   TClonesArray *branchGenJet = treeReader->UseBranch("GenJet");
   TClonesArray *branchJet = treeReader->UseBranch("Jet");
 
@@ -324,8 +326,6 @@ void GetJetsEres(std::vector<resolPlot> *histos, ExRootTreeReader *treeReader)
   cout << "** Chain contains " << allEntries << " events" << endl;
 
   Jet *jet, *genjet;
-  GenParticle *particle;
-  //TObject *object;
 
   TLorentzVector jetMomentum, genJetMomentum, bestGenJetMomentum;
 
@@ -434,25 +434,28 @@ void Validation(const char *inputFile, const char *outputFile)
   //jethistos = 
   //std::vector<resolPlot> plots = HistogramsCollection ( TMath::Log10(ptmin), TMath::Log10(ptmax), Nbins, "jets"); 
 
+/*
   std::vector<resolPlot> plots;
   HistogramsCollection(&plots, 1, 3, "jets");
 
   GetJetsEres( &plots, treeReader);
 
   TGraphErrors gr = EresGraph(&plots, true);
+*/
 
+  ///////////////
+  // Electrons //
+  ///////////////
+
+  // Reconstruction efficiency
   TString elecs = "Electron";
   int elID = 11;
+  std::pair<TH1D*,TH1D*> histos_el = GetEff<Electron>(elecs, elID, treeReader);
+  std::cout << "entries 2 : " << histos_el.first->GetEntries() << std::endl;
 
-  Electron *elec;
-
-  std::pair <TH1D,TH1D> histos = GetEff(elecs, elec, elID, treeReader);
-
+  // tracking reconstruction efficiency
   TString tracks = "Track";
-  Track *track;
-
-  std::pair <TH1D,TH1D> histos_track = GetEff(tracks, track, elID, treeReader);
-
+  std::pair <TH1D*,TH1D*> histos_eltrack = GetEff<Track>(tracks, elID, treeReader);
 
   // Electron Energy Resolution
   std::vector<resolPlot> plots_el;
@@ -475,16 +478,131 @@ void Validation(const char *inputFile, const char *outputFile)
   TGraphErrors gr_eltower = EresGraph(&plots_eltower, true);
   gr_eltower.SetName("ElectronTower");
 
+  // Canvas
+
+  TCanvas *C_el = new TCanvas("electrons energy resolution", "electrons energy resolution", 1000, 500);
+  gr_eltower.SetLineColor(kBlue);
+  gr_eltower.SetLineWidth(3);
+  gr_eltower.Draw("ACP");
+
+  gr_eltrack.SetLineColor(kRed);
+  gr_eltrack.SetLineWidth(3);
+  gr_eltrack.Draw("CP");
+
+  gr_el.SetLineColor(kBlack);
+  gr_el.SetLineWidth(3);
+  gr_el.Draw("CP");
+
+  gr_eltower.GetYaxis()->SetRangeUser(0,0.1);
+  gPad->SetLogx();
+
+
+
+  ///////////
+  // Muons //
+  ///////////
+
+  // Reconstruction efficiency
+  TString muons = "Muon";
+  int muID = 13;
+  std::pair<TH1D*,TH1D*> histos_mu = GetEff<Muon>(muons, muID, treeReader);
+
+  // muon tracking reconstruction efficiency
+  std::pair <TH1D*,TH1D*> histos_mutrack = GetEff<Track>(tracks, muID, treeReader);
+
+  // Muon Energy Resolution
+  std::vector<resolPlot> plots_mu;
+  HistogramsCollection(&plots_mu, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "muons");
+  GetEres<Muon>( &plots_mu, "Muon", 13, treeReader);
+  TGraphErrors gr_mu = EresGraph(&plots_mu, true);
+  gr_mu.SetName("Muon");
+
+  // Muon Track Energy Resolution
+  std::vector<resolPlot> plots_mutrack;
+  HistogramsCollection(&plots_mutrack, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "muonsTracks");
+  GetEres<Track>( &plots_mutrack, "Track", muID, treeReader);
+  TGraphErrors gr_mutrack = EresGraph(&plots_mutrack, true);
+  gr_eltrack.SetName("MuonTracks");
+
+  // Canvas
+  
+  TCanvas *C_mu = new TCanvas("muons energy resolution", "muons energy resolution", 1000, 500);
+
+  gr_mutrack.SetLineColor(kRed);
+  gr_mutrack.SetLineWidth(3);
+  gr_mutrack.Draw("ACP");
+
+  gr_mu.SetLineColor(kBlack);
+  gr_mu.SetLineWidth(3);
+  gr_mu.Draw("CP");
+
+  gr_mutrack.GetYaxis()->SetRangeUser(0,0.5);
+  gPad->SetLogx();
+
+
+
+  /////////////
+  // Photons //
+  /////////////
+
+  // Reconstruction efficiency
+  TString photons = "Photon";
+  int phID = 22;
+  std::pair<TH1D*,TH1D*> histos_ph = GetEff<Electron>(photons, phID, treeReader);
+
+  // Photon Energy Resolution
+  std::vector<resolPlot> plots_ph;
+  HistogramsCollection(&plots_ph, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "photons");
+  GetEres<Photon>( &plots_ph, "Photon", phID, treeReader);
+  TGraphErrors gr_ph = EresGraph(&plots_ph, true);
+  gr_ph.SetName("Photon");
+
+  // Photon Tower Energy Resolution
+  std::vector<resolPlot> plots_phtower;
+  HistogramsCollection(&plots_phtower, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "photonsTower");
+  GetEres<Tower>( &plots_phtower, "Tower", phID, treeReader);
+  TGraphErrors gr_phtower = EresGraph(&plots_phtower, true);
+  gr_eltower.SetName("PhotonTower");
+
+  // Canvas
+
+  TCanvas *C_ph = new TCanvas("photons energy resolution", "photons energy resolution", 1000, 500);
+  gr_phtower.SetLineColor(kBlue);
+  gr_phtower.SetLineWidth(3);
+  gr_phtower.Draw("ACP");
+
+  gr_ph.SetLineColor(kBlack);
+  gr_ph.SetLineWidth(3);
+  gr_ph.Draw("CP");
+
+  gr_phtower.GetYaxis()->SetRangeUser(0,0.1);
+  gPad->SetLogx();
+
+  
+
 
   TFile *fout = new TFile(outputFile,"recreate");
-  gr.Write();
-  histos.first.Write();
-  histos.second.Write();
-  histos_track.first.Write();
-  histos_track.second.Write();
-  gr_el.Write();
-  gr_eltrack.Write();
-  gr_eltower.Write();
+  //  gr.Write();
+  histos_el.first->Write();
+  histos_el.second->Write();
+  histos_eltrack.first->Write();
+  histos_eltrack.second->Write();
+
+  histos_mu.first->Write();
+  histos_mu.second->Write();
+  histos_mutrack.first->Write();
+  histos_mutrack.second->Write();
+
+  histos_ph.first->Write();
+  histos_ph.second->Write();
+
+  //gr_el.Write();
+  //gr_eltrack.Write();
+  //gr_eltower.Write();
+
+  C_el->Write();
+  C_mu->Write();
+  C_ph->Write();
   fout->Write();
 
   
