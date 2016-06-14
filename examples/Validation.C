@@ -39,6 +39,8 @@ class ExRootResult;
 
 #include "TCanvas.h"
 #include "TSystem.h"
+#include "TStyle.h"
+#include "TLegend.h"
 #include <TH1.h>
 #include "TString.h"
 #include "vector"
@@ -46,14 +48,28 @@ class ExRootResult;
 #include <iostream>
 #include "TGraph.h"
 #include "TGraphErrors.h"
+#include "TMultiGraph.h"
 #include <typeinfo>
 #include "TLorentzVector.h"
 
 //------------------------------------------------------------------------------
 
-double ptrangemin = 5;
-double ptrangemax = 10000;
-static const int Nbins = 50;
+double ptrangemin = 10;
+double ptrangemax = 1000;
+static const int Nbins = 20;
+
+int objStyle = 1;
+int trackStyle = 7;
+int towerStyle = 5;
+
+Color_t objColor = kBlack;
+Color_t trackColor = kBlack;
+Color_t towerColor = kBlack;
+
+double effLegXmin = 0.22;
+double effLegXmax = 0.5;
+double effLegYmin = 0.22;
+double effLegYmax = 0.4;
 
 struct resolPlot
 {
@@ -136,14 +152,12 @@ void BinLogX(TH1*h)
 //------------------------------------------------------------------------------
 
 template<typename T> 
-std::pair<TH1D*, TH1D*> GetEff(TString branch, int pdgID, ExRootTreeReader *treeReader)
+std::pair<TH1D*, TH1D*> GetEff(TClonesArray *branchReco, TClonesArray *branchParticle, TString name, int pdgID, ExRootTreeReader *treeReader)
 {
-  TClonesArray *branchParticle = treeReader->UseBranch("Particle");
-  TClonesArray *branchReco = treeReader->UseBranch(branch);
+
+  cout << "** Computing Efficiency of reconstructing "<< branchReco->GetName() << " induced by " << branchParticle->GetName() << " with PID " << pdgID << endl;
 
   Long64_t allEntries = treeReader->GetEntries();
-
-  cout << "** Chain contains " << allEntries << " events" << endl;
 
   GenParticle *particle;
   T *recoObj;
@@ -156,10 +170,10 @@ std::pair<TH1D*, TH1D*> GetEff(TString branch, int pdgID, ExRootTreeReader *tree
 
   Int_t i, j;
 
-  TH1D *histGenPt = new TH1D(branch+" gen spectra Pt",branch+" gen spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
-  TH1D *histRecoPt = new TH1D(branch+" reco spectra Pt",branch+" reco spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
-  TH1D *histGenEta  = new TH1D(branch+" gen spectra Eta",branch+" gen spectra Eta", 12, -3, 3);
-  TH1D *histRecoEta = new TH1D(branch+" reco spectra Eta",branch+" reco spectra Eta", 12, -3, 3);
+  TH1D *histGenPt = new TH1D(name+" gen spectra Pt",name+" gen spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D *histRecoPt = new TH1D(name+" reco spectra Pt",name+" reco spectra Pt", Nbins, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax));
+  TH1D *histGenEta  = new TH1D(name+" gen spectra Eta",name+" gen spectra Eta", 12, -3, 3);
+  TH1D *histRecoEta = new TH1D(name+" reco spectra Eta",name+" reco spectra Eta", 12, -3, 3);
 
 
   BinLogX(histGenPt);
@@ -171,9 +185,7 @@ std::pair<TH1D*, TH1D*> GetEff(TString branch, int pdgID, ExRootTreeReader *tree
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    if(entry%1000000 == 0) cout << "Event number: "<< entry <<endl;
-
-    // Loop over all reconstructed jets in event
+    // Loop over all generated particle in event
     for(i = 0; i < branchParticle->GetEntriesFast(); ++i)
     {
 
@@ -182,7 +194,7 @@ std::pair<TH1D*, TH1D*> GetEff(TString branch, int pdgID, ExRootTreeReader *tree
 
       deltaR = 999;
    
-      if (particle->PID == pdgID && genMomentum.Pt() > 0.001)
+      if (particle->PID == pdgID && genMomentum.Pt() > ptrangemin && genMomentum.Pt() < ptrangemax )
       {
     
         // Loop over all reco object in event
@@ -226,24 +238,18 @@ std::pair<TH1D*, TH1D*> GetEff(TString branch, int pdgID, ExRootTreeReader *tree
   histos.first = histRecoPt;
   histos.second = histRecoEta;
 
-  std::cout << "entries : " << histos.first->GetEntries() << std::endl;
-
   return histos;
 }
 
 template<typename T>
-void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTreeReader *treeReader)
+void GetEres(std::vector<resolPlot> *histos, TClonesArray *branchReco, TClonesArray *branchParticle, int pdgID, ExRootTreeReader *treeReader)
 {
-  T* recoObj;
-  TClonesArray *branchParticle = treeReader->UseBranch("Particle");
-  TClonesArray *branchReco = treeReader->UseBranch(branch);
-
   Long64_t allEntries = treeReader->GetEntries();
 
-  cout << "** Chain contains " << allEntries << " events" << endl;
+  cout << "** Computing resolution of " << branchReco->GetName() << " induced by " << branchParticle->GetName() << " with PID " << pdgID << endl;
 
   GenParticle *particle;
-  //TObject *object;
+  T* recoObj;  
 
   TLorentzVector recoMomentum, genMomentum, bestGenMomentum;
 
@@ -259,12 +265,9 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTr
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    if(entry%100000 == 0) cout << "Event number: "<< entry <<endl;
-
     // Loop over all reconstructed jets in event
     for(i = 0; i < branchReco->GetEntriesFast(); ++i)
     {
-
       recoObj = (T*) branchReco->At(i);
       recoMomentum = recoObj->P4();
 
@@ -274,7 +277,6 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTr
      for(j = 0; j < branchParticle->GetEntriesFast(); ++j)
      {
         particle = (GenParticle*) branchParticle->At(j);
-
         if (particle->PID == pdgID && particle->Status == 1)
         {
             genMomentum = particle->P4();
@@ -299,15 +301,9 @@ void GetEres(std::vector<resolPlot> *histos, TString branch, int pdgID, ExRootTr
 
         for (bin = 0; bin < Nbins; bin++)
         {
-            //std::cout << "ptmin : " << std::endl;
-            //std::cout << "histos " << typeid(histos).name() << '\n';
-            //std::cout << "*histos " << typeid(*histos).name() << '\n';
-            //histos[bin]->();
-            //std::cout << histos->at(bin).ptmin << std::endl;
             if(pt > histos->at(bin).ptmin && pt < histos->at(bin).ptmax && eta > 0.0 && eta < 2.5) 
             {
-                //std::cout << histos->at(bin).ptmin << std::endl;
-                if (eta < 0.5) {histos->at(bin).cenResolHist->Fill((bestGenMomentum.E()-recoMomentum.E())/bestGenMomentum.E());}
+                if (eta < 1.5) {histos->at(bin).cenResolHist->Fill((bestGenMomentum.E()-recoMomentum.E())/bestGenMomentum.E());}
                 else if (eta < 2.5) {histos->at(bin).fwdResolHist->Fill((bestGenMomentum.E()-recoMomentum.E())/bestGenMomentum.E());}
             }
         }
@@ -416,6 +412,125 @@ TGraphErrors EresGraph(std::vector<resolPlot> *histos, bool central)
 
 //------------------------------------------------------------------------------
 
+
+// type 1 : object, 2 : track, 3 : tower
+
+void addGraph(TMultiGraph *mg, TGraphErrors *gr, TLegend *leg, int type)
+{
+
+  gr->SetLineWidth(3);
+
+  switch ( type )
+  {    
+    case 1:
+      gr->SetLineColor(objColor);
+      gr->SetLineStyle(objStyle);
+      std::cout << "Adding " << gr->GetName() << std::endl;
+      mg->Add(gr);
+      leg->AddEntry(gr,"Reco","l");
+      break;
+
+    case 2:
+      gr->SetLineColor(trackColor);
+      gr->SetLineStyle(trackStyle);
+      mg->Add(gr);
+      leg->AddEntry(gr,"Track","l");
+      break;
+
+    case 3:
+      gr->SetLineColor(towerColor);
+      gr->SetLineStyle(towerStyle);
+      mg->Add(gr);
+      leg->AddEntry(gr,"Tower","l");
+      break;
+
+    default:
+      std::cout << "wrong type, possibles choices are Object, Track and Tower" << std::endl;
+      break;
+  }
+}
+
+void addHist(TH1D *h, TLegend *leg, int type)
+{
+  h->SetLineWidth(3);
+
+  switch ( type )
+  {
+    case 1:
+      h->SetLineColor(objColor);
+      h->SetLineStyle(objStyle);
+      leg->AddEntry(h,"Reco","l");
+      break;
+
+    case 2:
+      h->SetLineColor(trackColor);
+      h->SetLineStyle(trackStyle);
+      leg->AddEntry(h,"Track","l");
+      break;
+
+    case 3:
+      h->SetLineColor(towerColor);
+      h->SetLineStyle(towerStyle);
+      leg->AddEntry(h,"Tower","l");
+      break;
+
+    default:
+      std::cout << "wrong type, possibles choices are Object, Track and Tower" << std::endl;
+      break;
+  }
+}
+
+void DrawAxis(TMultiGraph *mg, TLegend *leg, double max)
+{
+  mg->SetMinimum(0.);
+  mg->SetMaximum(max);
+  mg->GetXaxis()->SetLimits(ptrangemin,ptrangemax);
+  mg->GetYaxis()->SetTitle("#sigma (E) / E_{gen}");
+  mg->GetXaxis()->SetTitle("E_{gen}");
+  mg->GetYaxis()->SetTitleSize(0.07);
+  mg->GetXaxis()->SetTitleSize(0.07);
+  mg->GetYaxis()->SetLabelSize(0.07);
+  mg->GetXaxis()->SetLabelSize(0.07);
+
+  leg->SetLineStyle(0);
+  leg->SetFillStyle(0);
+  leg->SetLineWidth(0);
+  leg->SetLineColor(0);
+
+  gStyle->SetOptTitle(0); 
+  gPad->SetLogx();
+  gPad->SetBottomMargin(0.2);
+  gPad->SetLeftMargin(0.2);
+  
+}
+
+void DrawAxis(TH1D *h, TLegend *leg, int type)
+{
+
+  h->GetYaxis()->SetRangeUser(0,1.2);
+  if (type == 0) h->GetXaxis()->SetTitle("E_{gen}");
+  else h->GetXaxis()->SetTitle("#eta");
+  h->GetYaxis()->SetTitle("#epsilon");
+  h->GetYaxis()->SetTitleSize(0.07);
+  h->GetXaxis()->SetTitleSize(0.07);
+  h->GetYaxis()->SetLabelSize(0.07);
+  h->GetXaxis()->SetLabelSize(0.07);
+  leg->SetLineStyle(0);
+  leg->SetFillStyle(0);
+  leg->SetLineWidth(0);
+  leg->SetLineColor(0);
+
+  gStyle->SetOptTitle(0);
+  gStyle->SetOptStat(0);
+  gPad->SetBottomMargin(0.2);
+  gPad->SetLeftMargin(0.2);
+
+  gPad->Modified();
+  gPad->Update();
+  
+}
+
+
 void Validation(const char *inputFile, const char *outputFile)
 {
   //gSystem->Load("libDelphes");
@@ -426,22 +541,12 @@ void Validation(const char *inputFile, const char *outputFile)
   chain->Add(inputFile);
 
   ExRootTreeReader *treeReader = new ExRootTreeReader(chain);
-  //ExRootResult *result = new ExRootResult();
-
-  //TestPlots *plots = new TestPlots;
-  //BookHistograms(result, plots);
-
-  //jethistos = 
-  //std::vector<resolPlot> plots = HistogramsCollection ( TMath::Log10(ptmin), TMath::Log10(ptmax), Nbins, "jets"); 
-
-/*
-  std::vector<resolPlot> plots;
-  HistogramsCollection(&plots, 1, 3, "jets");
-
-  GetJetsEres( &plots, treeReader);
-
-  TGraphErrors gr = EresGraph(&plots, true);
-*/
+  TClonesArray *branchParticle = treeReader->UseBranch("Particle");
+  TClonesArray *branchElectron = treeReader->UseBranch("Electron");
+  TClonesArray *branchMuon = treeReader->UseBranch("Muon");
+  TClonesArray *branchPhoton = treeReader->UseBranch("Photon");
+  TClonesArray *branchTrack = treeReader->UseBranch("Track");
+  TClonesArray *branchTower = treeReader->UseBranch("Tower");
 
   ///////////////
   // Electrons //
@@ -450,52 +555,83 @@ void Validation(const char *inputFile, const char *outputFile)
   // Reconstruction efficiency
   TString elecs = "Electron";
   int elID = 11;
-  std::pair<TH1D*,TH1D*> histos_el = GetEff<Electron>(elecs, elID, treeReader);
-  std::cout << "entries 2 : " << histos_el.first->GetEntries() << std::endl;
+  std::pair<TH1D*,TH1D*> histos_el = GetEff<Electron>(branchElectron, branchParticle, "Electron", elID, treeReader);
 
   // tracking reconstruction efficiency
-  TString tracks = "Track";
-  std::pair <TH1D*,TH1D*> histos_eltrack = GetEff<Track>(tracks, elID, treeReader);
+  std::pair <TH1D*,TH1D*> histos_eltrack = GetEff<Track>(branchTrack, branchParticle, "electronTrack", elID, treeReader);
+
+  // Tower reconstruction efficiency
+  std::pair <TH1D*,TH1D*> histos_eltower = GetEff<Tower>(branchTower, branchParticle, "electronTower", elID, treeReader);
 
   // Electron Energy Resolution
   std::vector<resolPlot> plots_el;
   HistogramsCollection(&plots_el, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electrons");
-  GetEres<Electron>( &plots_el, "Electron", 11, treeReader);
+  GetEres<Electron>( &plots_el, branchElectron, branchParticle, elID, treeReader);
   TGraphErrors gr_el = EresGraph(&plots_el, true);
   gr_el.SetName("Electron");
 
   // Electron Track Energy Resolution
   std::vector<resolPlot> plots_eltrack;
   HistogramsCollection(&plots_eltrack, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTracks");
-  GetEres<Track>( &plots_eltrack, "Track", 11, treeReader);
+  GetEres<Track>( &plots_eltrack, branchTrack, branchParticle, elID, treeReader);
   TGraphErrors gr_eltrack = EresGraph(&plots_eltrack, true);
   gr_eltrack.SetName("ElectronTracks");
 
   // Electron Tower Energy Resolution
   std::vector<resolPlot> plots_eltower;
   HistogramsCollection(&plots_eltower, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "electronsTower");
-  GetEres<Tower>( &plots_eltower, "Tower", 11, treeReader);
+  GetEres<Tower>( &plots_eltower, branchTower, branchParticle, elID, treeReader);
   TGraphErrors gr_eltower = EresGraph(&plots_eltower, true);
   gr_eltower.SetName("ElectronTower");
 
-  // Canvas
+  // Canvases
+  TString elEff = "electronEff";
+  TCanvas *C_el1 = new TCanvas(elEff,elEff, 1000, 500);
+  C_el1->Divide(2);
+  C_el1->cd(1);
+  TLegend *leg_el1 = new TLegend(effLegXmin,effLegYmin,effLegXmax,effLegYmax);
 
-  TCanvas *C_el = new TCanvas("electrons energy resolution", "electrons energy resolution", 1000, 500);
-  gr_eltower.SetLineColor(kBlue);
-  gr_eltower.SetLineWidth(3);
-  gr_eltower.Draw("ACP");
-
-  gr_eltrack.SetLineColor(kRed);
-  gr_eltrack.SetLineWidth(3);
-  gr_eltrack.Draw("CP");
-
-  gr_el.SetLineColor(kBlack);
-  gr_el.SetLineWidth(3);
-  gr_el.Draw("CP");
-
-  gr_eltower.GetYaxis()->SetRangeUser(0,0.1);
   gPad->SetLogx();
+  histos_eltrack.first->Draw();
+  addHist(histos_eltrack.first, leg_el1, 2); 
+  histos_eltower.first->Draw("same");
+  addHist(histos_eltower.first, leg_el1, 3);
+  histos_el.first->Draw("same");
+  addHist(histos_el.first, leg_el1, 1);
 
+  DrawAxis(histos_eltrack.first, leg_el1, 0);
+  leg_el1->Draw();
+
+  C_el1->cd(2);
+  TLegend *leg_el2 = new TLegend(effLegXmin,effLegYmin,effLegXmax,effLegYmax);
+
+  histos_eltrack.second->Draw();
+  addHist(histos_eltrack.second, leg_el2, 2);
+  histos_eltower.second->Draw("same");
+  addHist(histos_eltower.second, leg_el2, 3);
+  histos_el.second->Draw("same");
+  addHist(histos_el.second, leg_el2, 1);
+
+  DrawAxis(histos_eltrack.second, leg_el2, 1);
+  delete(leg_el2);
+  C_el1->cd(0);
+ 
+  TString elRes = "electronERes";
+  TCanvas *C_el2 = new TCanvas(elRes,elRes, 1000, 500);
+  TMultiGraph *mg_el = new TMultiGraph(elRes,elRes);
+  TLegend *leg_el = new TLegend(0.52,0.7,0.9,0.9);
+
+  addGraph(mg_el, &gr_eltower, leg_el, 3);
+  addGraph(mg_el, &gr_eltrack, leg_el, 2);
+  addGraph(mg_el, &gr_el, leg_el, 1);
+
+  mg_el->Draw("ACX");
+  leg_el->Draw();
+
+  DrawAxis(mg_el, leg_el, 0.1);
+  
+  C_el1->SaveAs(elEff+".eps");
+  C_el2->SaveAs(elRes+".eps");
 
 
   ///////////
@@ -503,90 +639,144 @@ void Validation(const char *inputFile, const char *outputFile)
   ///////////
 
   // Reconstruction efficiency
-  TString muons = "Muon";
   int muID = 13;
-  std::pair<TH1D*,TH1D*> histos_mu = GetEff<Muon>(muons, muID, treeReader);
+  std::pair<TH1D*,TH1D*> histos_mu = GetEff<Muon>(branchMuon, branchParticle,"Muon", muID, treeReader);
 
   // muon tracking reconstruction efficiency
-  std::pair <TH1D*,TH1D*> histos_mutrack = GetEff<Track>(tracks, muID, treeReader);
+  std::pair <TH1D*,TH1D*> histos_mutrack = GetEff<Track>(branchTrack, branchParticle, "muonTrack", muID, treeReader);
 
   // Muon Energy Resolution
   std::vector<resolPlot> plots_mu;
   HistogramsCollection(&plots_mu, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "muons");
-  GetEres<Muon>( &plots_mu, "Muon", 13, treeReader);
+  GetEres<Muon>( &plots_mu, branchMuon, branchParticle, muID, treeReader);
   TGraphErrors gr_mu = EresGraph(&plots_mu, true);
   gr_mu.SetName("Muon");
 
   // Muon Track Energy Resolution
   std::vector<resolPlot> plots_mutrack;
   HistogramsCollection(&plots_mutrack, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "muonsTracks");
-  GetEres<Track>( &plots_mutrack, "Track", muID, treeReader);
+  GetEres<Track>( &plots_mutrack, branchTrack, branchParticle, muID, treeReader);
   TGraphErrors gr_mutrack = EresGraph(&plots_mutrack, true);
   gr_eltrack.SetName("MuonTracks");
 
   // Canvas
-  
-  TCanvas *C_mu = new TCanvas("muons energy resolution", "muons energy resolution", 1000, 500);
 
-  gr_mutrack.SetLineColor(kRed);
-  gr_mutrack.SetLineWidth(3);
-  gr_mutrack.Draw("ACP");
+  TString muEff = "muonEff";
+  TCanvas *C_mu1 = new TCanvas(muEff,muEff, 1000, 500);
+  C_mu1->Divide(2);
+  C_mu1->cd(1);
+  TLegend *leg_mu1 = new TLegend(effLegXmin,effLegYmin,effLegXmax,effLegYmax);
 
-  gr_mu.SetLineColor(kBlack);
-  gr_mu.SetLineWidth(3);
-  gr_mu.Draw("CP");
-
-  gr_mutrack.GetYaxis()->SetRangeUser(0,0.5);
   gPad->SetLogx();
+  histos_mutrack.first->Draw();
+  addHist(histos_mutrack.first, leg_mu1, 2);
+  histos_mu.first->Draw("same");
+  addHist(histos_mu.first, leg_mu1, 1);
 
+  DrawAxis(histos_mutrack.first, leg_mu1, 0);
+  leg_mu1->Draw();
 
+  C_mu1->cd(2);
+  TLegend *leg_mu2 = new TLegend(effLegXmin,effLegYmin,effLegXmax,effLegYmax);
+
+  histos_mutrack.second->Draw();
+  addHist(histos_mutrack.second, leg_mu2, 2);
+  histos_mu.second->Draw("same");
+  addHist(histos_mu.second, leg_mu2, 1);
+
+  DrawAxis(histos_mutrack.second, leg_mu2, 1);
+
+  TString muRes = "muonERes";
+  TCanvas *C_mu = new TCanvas(muRes,muRes, 1000, 500);
+  TMultiGraph *mg_mu = new TMultiGraph(muRes,muRes);
+  TLegend *leg_mu = new TLegend(0.52,0.7,0.9,0.9);
+
+  addGraph(mg_mu, &gr_mutrack, leg_mu, 2);
+  addGraph(mg_mu, &gr_mu, leg_mu, 1);
+
+  mg_mu->Draw("ACX");
+  leg_mu->Draw();
+
+  DrawAxis(mg_mu, leg_mu, 0.3);
+
+  C_mu1->SaveAs(muEff+".eps");
+  C_mu->SaveAs(muRes+".eps");
 
   /////////////
   // Photons //
   /////////////
 
   // Reconstruction efficiency
-  TString photons = "Photon";
   int phID = 22;
-  std::pair<TH1D*,TH1D*> histos_ph = GetEff<Electron>(photons, phID, treeReader);
+  std::pair<TH1D*,TH1D*> histos_ph = GetEff<Electron>(branchPhoton, branchParticle, "Photon", phID, treeReader);
+  std::pair<TH1D*,TH1D*> histos_phtower = GetEff<Electron>(branchTower, branchParticle, "Photon", phID, treeReader);
 
   // Photon Energy Resolution
   std::vector<resolPlot> plots_ph;
   HistogramsCollection(&plots_ph, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "photons");
-  GetEres<Photon>( &plots_ph, "Photon", phID, treeReader);
+  GetEres<Photon>( &plots_ph, branchPhoton, branchParticle, phID, treeReader);
   TGraphErrors gr_ph = EresGraph(&plots_ph, true);
   gr_ph.SetName("Photon");
 
   // Photon Tower Energy Resolution
   std::vector<resolPlot> plots_phtower;
   HistogramsCollection(&plots_phtower, TMath::Log10(ptrangemin), TMath::Log10(ptrangemax), "photonsTower");
-  GetEres<Tower>( &plots_phtower, "Tower", phID, treeReader);
+  GetEres<Tower>( &plots_phtower, branchTower, branchParticle, phID, treeReader);
   TGraphErrors gr_phtower = EresGraph(&plots_phtower, true);
-  gr_eltower.SetName("PhotonTower");
+  gr_phtower.SetName("PhotonTower");
 
   // Canvas
 
-  TCanvas *C_ph = new TCanvas("photons energy resolution", "photons energy resolution", 1000, 500);
-  gr_phtower.SetLineColor(kBlue);
-  gr_phtower.SetLineWidth(3);
-  gr_phtower.Draw("ACP");
+  TString phEff = "photonEff";
+  TCanvas *C_ph1 = new TCanvas(phEff,phEff, 1000, 500);
+  C_ph1->Divide(2);
+  C_ph1->cd(1);
+  TLegend *leg_ph1 = new TLegend(effLegXmin,effLegYmin,effLegXmax,effLegYmax);
 
-  gr_ph.SetLineColor(kBlack);
-  gr_ph.SetLineWidth(3);
-  gr_ph.Draw("CP");
-
-  gr_phtower.GetYaxis()->SetRangeUser(0,0.1);
   gPad->SetLogx();
+  histos_phtower.first->Draw();
+  addHist(histos_phtower.first, leg_ph1, 3);
+  histos_ph.first->Draw("same");
+  addHist(histos_ph.first, leg_ph1, 1);
 
-  
+  DrawAxis(histos_phtower.first, leg_ph1, 0);
+  leg_ph1->Draw();
+
+  C_ph1->cd(2);
+  TLegend *leg_ph2 = new TLegend(effLegXmin,effLegYmin,effLegXmax,effLegYmax);
+
+  histos_phtower.second->Draw("same");
+  addHist(histos_phtower.second, leg_ph2, 3);
+  histos_ph.second->Draw("same");
+  addHist(histos_ph.second, leg_ph2, 1);
+
+  DrawAxis(histos_phtower.second, leg_ph2, 1);
+
+  C_ph1->SaveAs(phEff+".eps");
+
+  TString phRes = "phERes";
+  TCanvas *C_ph = new TCanvas(phRes,phRes, 1000, 500);
+  TMultiGraph *mg_ph = new TMultiGraph(phRes,phRes);
+  TLegend *leg_ph = new TLegend(0.52,0.7,0.9,0.9);
+
+  addGraph(mg_ph, &gr_phtower, leg_ph, 3);
+  addGraph(mg_ph, &gr_ph, leg_ph, 1);
+
+  mg_ph->Draw("ACX");
+  leg_ph->Draw();
+
+  DrawAxis(mg_ph, leg_ph, 0.3);
+
+  C_ph->SaveAs(phRes+".eps");
 
 
   TFile *fout = new TFile(outputFile,"recreate");
   //  gr.Write();
   histos_el.first->Write();
-  histos_el.second->Write();
+  //histos_el.second->Write();
   histos_eltrack.first->Write();
-  histos_eltrack.second->Write();
+  //histos_eltrack.second->Write();
+  histos_eltower.first->Write();
 
   histos_mu.first->Write();
   histos_mu.second->Write();
@@ -600,17 +790,12 @@ void Validation(const char *inputFile, const char *outputFile)
   //gr_eltrack.Write();
   //gr_eltower.Write();
 
-  C_el->Write();
+  C_el1->Write();
+  C_el2->Write();
   C_mu->Write();
   C_ph->Write();
   fout->Write();
-
   
-  /*
-  AnalyseEvents(treeReader, plots);
-
-  result->Write(outputFile);
-  */
 
   cout << "** Exiting..." << endl;
 
