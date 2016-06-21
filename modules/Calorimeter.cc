@@ -573,13 +573,11 @@ void Calorimeter::FinalizeTower()
   }
  
   // if neutral excess is not significant, rescale eflow tracks, such that the total charged equals the best measurement given by the calorimeter and tracking
-  else
+  else if(fECalTrackEnergy > 0.0)
   {
     weightTrack = (fECalTrackSigma > 0.0) ? 1 / (fECalTrackSigma*fECalTrackSigma) : 0.0;
     weightCalo  = (ecalSigma > 0.0) ? 1 / (ecalSigma*ecalSigma) : 0.0;
- 
-    if (pt > 1 && pt < 200 && abs(eta) < 0.5 ) std::cout << "pt : " << pt << " eta " << eta << " track " << fECalTrackSigma << " calo " << ecalSigma << std::endl;
- 
+  
     bestEnergyEstimate = (weightTrack*fECalTrackEnergy + weightCalo*ecalEnergy) / (weightTrack + weightCalo); 
     rescaleFactor = bestEnergyEstimate/fECalTrackEnergy;
 
@@ -625,7 +623,7 @@ void Calorimeter::FinalizeTower()
   }
  
   // if neutral excess is not significant, rescale eflow tracks, such that the total charged equals the best measurement given by the calorimeter and tracking
-  else
+  else if(fHCalTrackEnergy > 0.0)
   {
     weightTrack = (fHCalTrackSigma > 0.0) ? 1 / (fHCalTrackSigma*fHCalTrackSigma) : 0.0;
     weightCalo  = (hcalSigma > 0.0) ? 1 / (hcalSigma*hcalSigma) : 0.0;

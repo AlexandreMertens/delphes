@@ -2,8 +2,8 @@
 #  Phase II - No Pile-Up
 #
 #  Main authors: Michele Selvaggi (UCL)
-#                                
-#  Released on: 
+#
+#  Released on:
 #
 #  Version: v01
 #
@@ -24,7 +24,7 @@ set ExecutionPath {
   MuonMomentumSmearing
 
   TrackMerger
-  
+
   ECal
   HCal
 
@@ -35,15 +35,15 @@ set ExecutionPath {
 
   PhotonIsolation
   PhotonEfficiency
-  
-  ElectronFilter 
+
+  ElectronFilter
   ElectronIsolation
   ElectronEfficiency
- 
+
   MuonIsolation
   MuonLooseIdEfficiency
   MuonTightIdEfficiency
-  
+
   NeutrinoFilter
 
   MissingET
@@ -54,7 +54,7 @@ set ExecutionPath {
   FatJetFinder
 
   ScalarHT
- 
+
   JetEnergyScale
 
   JetFlavorAssociation
@@ -64,7 +64,7 @@ set ExecutionPath {
   BTaggingTight
 
   TauTagging
-  
+
   TreeWriter
 }
 
@@ -120,7 +120,7 @@ module Efficiency ElectronTrackingEfficiency {
   set InputArray  ParticlePropagator/electrons
   set OutputArray electrons
   # tracking efficiency formula for electrons
-  set EfficiencyFormula { 
+  set EfficiencyFormula {
       (pt <= 0.2) * (0.00) + \
 	  (abs(eta) <= 1.2) * (pt > 0.2 && pt <= 1.0) * (pt * 0.96) + \
 	  (abs(eta) <= 1.2) * (pt > 1.0) * (0.97) + \
@@ -152,7 +152,7 @@ module Efficiency MuonTrackingEfficiency {
 	  (abs(eta) > 2.8 && abs(eta) <= 4.0) * (pt > 0.2 && pt <= 1.0) * (pt*0.95) + \
 	  (abs(eta) > 2.8 && abs(eta) <= 4.0) * (pt > 1.0) * (0.95) + \
 	  (abs(eta) > 4.0) * (0.00)
-	  
+
   }
 }
 
@@ -164,8 +164,8 @@ module MomentumSmearing ChargedHadronMomentumSmearing {
   ## hadrons after having applied the tracking efficiency
   set InputArray  ChargedHadronTrackingEfficiency/chargedHadrons
   set OutputArray chargedHadrons
-  # resolution formula for charged hadrons , 
- 
+  # resolution formula for charged hadrons ,
+
   # from http://mersi.web.cern.ch/mersi/layouts/.private/Baseline_tilted_200_Pixel_1_1_1/index.html
   source trackMomentumResolution.tcl
 }
@@ -181,16 +181,16 @@ module EnergySmearing ElectronEnergySmearing {
   # set ResolutionFormula {resolution formula as a function of eta and energy}
 
   # resolution formula for electrons
-  
+
   # taking something flat in energy for now, ECAL will take over at high energy anyway.
   # inferred from hep-ex/1306.2016 and 1502.02701
-  set ResolutionFormula {  
-  
+  set ResolutionFormula {
+
                         (abs(eta) <= 1.5)  * (energy*0.028) +
     (abs(eta) > 1.5  && abs(eta) <= 1.75)  * (energy*0.037) +
     (abs(eta) > 1.75  && abs(eta) <= 2.15) * (energy*0.038) +
     (abs(eta) > 2.15  && abs(eta) <= 3.00) * (energy*0.044) +
-    (abs(eta) > 3.00  && abs(eta) <= 4.00) * (energy*0.10)}   
+    (abs(eta) > 3.00  && abs(eta) <= 4.00) * (energy*0.10)}
 
 }
 
@@ -202,11 +202,11 @@ module MomentumSmearing MuonMomentumSmearing {
   set InputArray MuonTrackingEfficiency/muons
   set OutputArray muons
   # resolution formula for muons
-  
-  # up to |eta| < 2.8 take measurement from tracking + muon chambers 
-  # for |eta| > 2.8 and pT < 5.0 take measurement from tracking alone taken from 
+
+  # up to |eta| < 2.8 take measurement from tracking + muon chambers
+  # for |eta| > 2.8 and pT < 5.0 take measurement from tracking alone taken from
   # http://mersi.web.cern.ch/mersi/layouts/.private/Baseline_tilted_200_Pixel_1_1_1/index.html
-  source muonMomentumResolution.tcl  
+  source muonMomentumResolution.tcl
 }
 
 
@@ -222,6 +222,7 @@ module Merger TrackMerger {
   set OutputArray tracks
 }
 
+
 #############
 #   ECAL
 #############
@@ -234,8 +235,8 @@ module SimpleCalorimeter ECal {
   set EFlowTrackOutputArray eflowTracks
   set EFlowTowerOutputArray eflowPhotons
 
-  set IsEcal true 
- 
+  set IsEcal true
+
   set EnergyMin 0.5
   set EnergySignificanceMin 1.0
 
@@ -248,7 +249,7 @@ module SimpleCalorimeter ECal {
   # the list ends with the higher edged of the last tower
 
   # assume 0.02 x 0.02 resolution in eta,phi in the barrel |eta| < 1.5
-  
+
   set PhiBins {}
   for {set i -180} {$i <= 180} {incr i} {
     add PhiBins [expr {$i * $pi/180.0}]
@@ -261,7 +262,7 @@ module SimpleCalorimeter ECal {
   }
 
   # assume 0.02 x 0.02 resolution in eta,phi in the endcaps 1.5 < |eta| < 3.0 (HGCAL- ECAL)
-  
+
   set PhiBins {}
   for {set i -180} {$i <= 180} {incr i} {
     add PhiBins [expr {$i * $pi/180.0}]
@@ -278,14 +279,14 @@ module SimpleCalorimeter ECal {
     add EtaPhiBins $eta $PhiBins
   }
 
-  # take present CMS granularity for HF  
- 
+  # take present CMS granularity for HF
+
   # 0.175 x (0.175 - 0.35) resolution in eta,phi in the HF 3.0 < |eta| < 5.0
   set PhiBins {}
   for {set i -18} {$i <= 18} {incr i} {
     add PhiBins [expr {$i * $pi/18.0}]
   }
-  
+
   foreach eta {-5 -4.7 -4.525 -4.35 -4.175 -4 -3.825 -3.65 -3.475 -3.3 -3.125 -2.958 3.125 3.3 3.475 3.65 3.825 4 4.175 4.35 4.525 4.7 5} {
     add EtaPhiBins $eta $PhiBins
   }
@@ -311,15 +312,12 @@ module SimpleCalorimeter ECal {
   add EnergyFraction {3122} {0.3}
 
   # set ResolutionFormula {resolution formula as a function of eta and energy}
-  
-  # for the ECAL barrel (|eta| < 1.5), see hep-ex/1306.2016 and 1502.02701
-  # for the endcaps (1.5 < |eta| < 3.0), we take HGCAL  see LHCC-P-008, Fig. 3.39, p.117
 
-  set ResolutionFormula {  (abs(eta) <= 1.50)                    * sqrt(energy^2*0.009^2 + energy*0.12^2 + 0.45^2) + 
-                           (abs(eta) > 1.50 && abs(eta) <= 1.75) * sqrt(energy^2*0.006^2 + energy*0.20^2) + \
-                           (abs(eta) > 1.75 && abs(eta) <= 2.15) * sqrt(energy^2*0.007^2 + energy*0.21^2) + \
-                           (abs(eta) > 2.15 && abs(eta) <= 3.00) * sqrt(energy^2*0.008^2 + energy*0.24^2) + \
-                           (abs(eta) >= 3.0 && abs(eta) <= 5.0)  * sqrt(energy^2*0.08^2 + energy*1.98^2)}
+  # for the ECAL barrel (|eta| < 1.5), see hep-ex/1306.2016 and 1502.02701
+
+  set ResolutionFormula {  (abs(eta) <= 2.5)                    * sqrt(energy^2*0.009^2 + energy*0.12^2 + 0.45^2) +
+                           (abs(eta) >= 2.5 && abs(eta) <= 5.0)  * sqrt(energy^2*0.08^2 + energy*1.98^2)}
+
 }
 
 #############
@@ -334,8 +332,8 @@ module SimpleCalorimeter HCal {
   set EFlowTrackOutputArray eflowTracks
   set EFlowTowerOutputArray eflowNeutralHadrons
 
-  set IsEcal false 
- 
+  set IsEcal false
+
   set EnergyMin 1.0
   set EnergySignificanceMin 1.0
 
@@ -346,44 +344,31 @@ module SimpleCalorimeter HCal {
   # lists of the edges of each tower in eta and phi
   # each list starts with the lower edge of the first tower
   # the list ends with the higher edged of the last tower
- 
-  # assume 0.087 x 0.087 resolution in eta,phi in the barrel |eta| < 1.5
 
+  # 5 degrees towers
   set PhiBins {}
   for {set i -36} {$i <= 36} {incr i} {
     add PhiBins [expr {$i * $pi/36.0}]
   }
-  foreach eta {-1.566 -1.479 -1.392 -1.305 -1.218 -1.131 -1.044 -0.957 -0.87 -0.783 -0.696 -0.609 -0.522 -0.435 -0.348 -0.261 -0.174 -0.087 0 0.087 0.174 0.261 0.348 0.435 0.522 0.609 0.696 0.783 0.87 0.957 1.044 1.131 1.218 1.305 1.392 1.479 1.566 1.65} {
+  foreach eta {-1.566 -1.479 -1.392 -1.305 -1.218 -1.131 -1.044 -0.957 -0.87 -0.783 -0.696 -0.609 -0.522 -0.435 -0.348 -0.261 -0.174 -0.087 0 0.087 0.174 0.261 0.348 0.435 0.522 0.609 0.696 0.783 0.87 0.957 1.044 1.131 1.218 1.305 1.392 1.479 1.566 1.653} {
     add EtaPhiBins $eta $PhiBins
   }
 
-  # assume 0.02 x 0.02 resolution in eta,phi in the endcaps 1.5 < |eta| < 3.0 (HGCAL- HCAL)
-  
-  set PhiBins {}
-  for {set i -180} {$i <= 180} {incr i} {
-    add PhiBins [expr {$i * $pi/180.0}]
-  }
-
-  # 0.02 unit in eta up to eta = 3
-  for {set i 1} {$i <= 84} {incr i} {
-    set eta [expr { -2.958 + $i * 0.0174}]
-    add EtaPhiBins $eta $PhiBins
-  }
-
-  for {set i 1} {$i <= 84} {incr i} {
-    set eta [expr { 1.4964 + $i * 0.0174}]
-    add EtaPhiBins $eta $PhiBins
-  }
-
-  # take present CMS granularity for HF  
- 
-  # 0.175 x (0.175 - 0.35) resolution in eta,phi in the HF 3.0 < |eta| < 5.0
+  # 10 degrees towers
   set PhiBins {}
   for {set i -18} {$i <= 18} {incr i} {
     add PhiBins [expr {$i * $pi/18.0}]
   }
-  
-  foreach eta {-5 -4.7 -4.525 -4.35 -4.175 -4 -3.825 -3.65 -3.475 -3.3 -3.125 -2.958 3.125 3.3 3.475 3.65 3.825 4 4.175 4.35 4.525 4.7 5} {
+  foreach eta {-4.35 -4.175 -4 -3.825 -3.65 -3.475 -3.3 -3.125 -2.95 -2.868 -2.65 -2.5 -2.322 -2.172 -2.043 -1.93 -1.83 -1.74 -1.653 1.74 1.83 1.93 2.043 2.172 2.322 2.5 2.65 2.868 2.95 3.125 3.3 3.475 3.65 3.825 4 4.175 4.35 4.525} {
+    add EtaPhiBins $eta $PhiBins
+  }
+
+  # 20 degrees towers
+  set PhiBins {}
+  for {set i -9} {$i <= 9} {incr i} {
+    add PhiBins [expr {$i * $pi/9.0}]
+  }
+  foreach eta {-5 -4.7 -4.525 4.7 5} {
     add EtaPhiBins $eta $PhiBins
   }
 
@@ -408,11 +393,12 @@ module SimpleCalorimeter HCal {
   add EnergyFraction {3122} {0.7}
 
 # set ResolutionFormula {resolution formula as a function of eta and energy}
-  set ResolutionFormula {                    (abs(eta) <= 1.5) * sqrt(energy^2*0.05^2 + energy*1.00^2) + \
-						   (abs(eta) > 1.5 && abs(eta) <= 3.0) * sqrt(energy^2*0.05^2 + energy*1.00^2) + \
-						   (abs(eta) > 3.0 && abs(eta) <= 5.0) * sqrt(energy^2*0.11^2 + energy*2.80^2)}
+  set ResolutionFormula {                  (abs(eta) <= 3.0) * sqrt(energy^2*0.050^2 + energy*1.50^2) +
+                         (abs(eta) > 3.0 && abs(eta) <= 5.0) * sqrt(energy^2*0.130^2 + energy*2.70^2)}
 
 }
+
+
 
 #################
 # Electron filter
@@ -513,7 +499,7 @@ module PdgCodeFilter NeutrinoFilter {
 
 module FastJetFinder GenJetFinder {
   set InputArray NeutrinoFilter/filteredParticles
- 
+
   set OutputArray jets
 
   # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
@@ -572,12 +558,12 @@ module FastJetFinder FatJetFinder {
   set ComputeNsubjettiness 1
   set Beta 1.0
   set AxisMode 4
- 
+
   set ComputeTrimming 1
   set RTrim 0.2
   set PtFracTrim 0.05
 
-  set ComputePruning 1 
+  set ComputePruning 1
   set ZcutPrun 0.1
   set RcutPrun 0.5
   set RPrun 0.8
@@ -609,22 +595,22 @@ module EnergyScale JetEnergyScale {
 ####################
 
 module Isolation PhotonIsolation {
-  
+
   # particle for which calculate the isolation
   set CandidateInputArray PhotonEnergySmearing/eflowPhotons
-  
+
   # isolation collection
   set IsolationInputArray EFlowMerger/eflow
- 
+
   # output array
   set OutputArray photons
-  
+
   # isolation cone
   set DeltaRMax 0.3
-  
-  # minimum pT  
+
+  # minimum pT
   set PTMin     1.0
-  
+
   # iso ratio to cut
   set PTRatioMax 9999.
 }
@@ -636,9 +622,9 @@ module Isolation PhotonIsolation {
 #####################
 
 module Efficiency PhotonEfficiency {
-  
+
   ## input particles
-  set InputArray PhotonIsolation/photons 
+  set InputArray PhotonIsolation/photons
   ## output particles
   set OutputArray photons
   # set EfficiencyFormula {efficiency formula as a function of eta and pt}
@@ -656,14 +642,14 @@ module Efficiency PhotonEfficiency {
 ######################
 
 module Isolation ElectronIsolation {
-  
+
   set CandidateInputArray ElectronFilter/electrons
-  
+
   # isolation collection
   set IsolationInputArray EFlowMerger/eflow
-  
+
   set OutputArray electrons
-  
+
   set DeltaRMax 0.3
   set PTMin 1.0
   set PTRatioMax 9999.
@@ -677,10 +663,10 @@ module Isolation ElectronIsolation {
 #######################
 
 module Efficiency ElectronEfficiency {
-  
+
   set InputArray ElectronIsolation/electrons
   set OutputArray electrons
-  
+
   # set EfficiencyFormula {efficiency formula as a function of eta and pt}
   # efficiency formula for electrons
   set EfficiencyFormula {
@@ -688,31 +674,31 @@ module Efficiency ElectronEfficiency {
                          (abs(eta) <= 1.45 ) * (pt >  4.0 && pt <= 6.0)   * (0.50) + \
                          (abs(eta) <= 1.45 ) * (pt >  6.0 && pt <= 8.0)   * (0.70) + \
                          (abs(eta) <= 1.45 ) * (pt >  8.0 && pt <= 10.0)  * (0.85) + \
-                         (abs(eta) <= 1.45 ) * (pt > 10.0 && pt <= 30.0)  * (0.94) + \                                                      
-                         (abs(eta) <= 1.45 ) * (pt > 30.0 && pt <= 50.0)  * (0.97) + \                          
-                         (abs(eta) <= 1.45 ) * (pt > 50.0 && pt <= 70.0)  * (0.98) + \          
-                         (abs(eta) <= 1.45 ) * (pt > 70.0 )  * (1.0) + \                                                                                                 
+                         (abs(eta) <= 1.45 ) * (pt > 10.0 && pt <= 30.0)  * (0.94) + \
+                         (abs(eta) <= 1.45 ) * (pt > 30.0 && pt <= 50.0)  * (0.97) + \
+                         (abs(eta) <= 1.45 ) * (pt > 50.0 && pt <= 70.0)  * (0.98) + \
+                         (abs(eta) <= 1.45 ) * (pt > 70.0 )  * (1.0) + \
                          (abs(eta) > 1.45  && abs(eta) <= 1.55) * (pt >  4.0 && pt <= 10.0)   * (0.35) + \
-                         (abs(eta) > 1.45  && abs(eta) <= 1.55) * (pt > 10.0 && pt <= 30.0)   * (0.40) + \   
-                         (abs(eta) > 1.45  && abs(eta) <= 1.55) * (pt > 30.0 && pt <= 70.0)   * (0.45) + \                                 
-                         (abs(eta) > 1.45  && abs(eta) <= 1.55) * (pt > 70.0 )  * (0.55) + \    
+                         (abs(eta) > 1.45  && abs(eta) <= 1.55) * (pt > 10.0 && pt <= 30.0)   * (0.40) + \
+                         (abs(eta) > 1.45  && abs(eta) <= 1.55) * (pt > 30.0 && pt <= 70.0)   * (0.45) + \
+                         (abs(eta) > 1.45  && abs(eta) <= 1.55) * (pt > 70.0 )  * (0.55) + \
                          (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt >  4.0 && pt <= 10.0)  * (0.75) + \
-                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 10.0 && pt <= 30.0)  * (0.85) + \                                                      
-                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 30.0 && pt <= 50.0)  * (0.95) + \                          
-                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 50.0 && pt <= 70.0)  * (0.95) + \          
-                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 70.0 )  * (1.0) + \   
+                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 10.0 && pt <= 30.0)  * (0.85) + \
+                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 30.0 && pt <= 50.0)  * (0.95) + \
+                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 50.0 && pt <= 70.0)  * (0.95) + \
+                         (abs(eta) >= 1.55 && abs(eta) <= 2.0 ) * (pt > 70.0 )  * (1.0) + \
                          (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt >  4.0 && pt <= 10.0)  * (0.65) + \
-                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 10.0 && pt <= 30.0)  * (0.75) + \                                                      
-                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 30.0 && pt <= 50.0)  * (0.90) + \                          
-                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 50.0 && pt <= 70.0)  * (0.90) + \          
-                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 70.0 )  * (0.90) + \                                                                            
+                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 10.0 && pt <= 30.0)  * (0.75) + \
+                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 30.0 && pt <= 50.0)  * (0.90) + \
+                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 50.0 && pt <= 70.0)  * (0.90) + \
+                         (abs(eta) >= 2.0 && abs(eta) <= 2.5 ) * (pt > 70.0 )  * (0.90) + \
                          (abs(eta) > 2.5 && abs(eta) <= 4.0 ) * (pt > 4.0 && pt <= 10.0) * (0.65) + \
 					  (abs(eta) > 2.5 && abs(eta) <= 4.0 ) * (pt > 10.0 && pt <= 30.0) * (0.75) + \
 					  (abs(eta) > 2.5 && abs(eta) <= 4.0 ) * (pt > 30.0 && pt <= 50.0) * (0.90) + \
 					  (abs(eta) > 2.5 && abs(eta) <= 4.0 ) * (pt > 50.0 && pt <= 70.0) * (0.90) + \
 					  (abs(eta) > 2.5 && abs(eta) <= 4.0 ) * (pt > 70.0 ) * (0.90) + \
 					  (abs(eta) > 4.0) * (0.00)
- 
+
   }
 }
 
@@ -722,12 +708,12 @@ module Efficiency ElectronEfficiency {
 
 module Isolation MuonIsolation {
   set CandidateInputArray MuonMomentumSmearing/muons
- 
+
   # isolation collection
   set IsolationInputArray EFlowMerger/eflow
- 
+
   set OutputArray muons
-  
+
   set DeltaRMax 0.3
   set PTMin 1.0
   set PTRatioMax 9999.
@@ -797,11 +783,11 @@ module BTagging BTaggingMedium {
   set JetInputArray JetEnergyScale/jets
 
   set BitNumber 1
- 
+
   source btagMedium.tcl
 }
 
-  
+
 
 #############
 # b-tagging #
@@ -812,7 +798,7 @@ module BTagging BTaggingTight {
 
   set BitNumber 2
 
-  source btagTight.tcl 
+  source btagTight.tcl
 }
 
 
@@ -840,7 +826,7 @@ module TauTagging TauTagging {
                              }
   add EfficiencyFormula {15} { (abs(eta) < 2.3) * 0.97*0.77*( (0.32 + 0.01*pt - 0.000054*pt*pt )*(pt<100)+0.78*(pt>100) ) + \
                                (abs(eta) > 2.3) * (0.000)
-                             } 
+                             }
 }
 
 
@@ -851,22 +837,22 @@ module TauTagging TauTagging {
 module TreeWriter TreeWriter {
 # add Branch InputArray BranchName BranchClass
   add Branch Delphes/allParticles Particle GenParticle
-  
+
   add Branch GenJetFinder/jets GenJet Jet
   add Branch GenMissingET/momentum GenMissingET MissingET
 
   add Branch HCal/eflowTracks EFlowTrack Track
   add Branch PhotonEnergySmearing/eflowPhotons EFlowPhoton Tower
   add Branch HCal/eflowNeutralHadrons EFlowNeutralHadron Tower
-  
+
   add Branch PhotonEfficiency/photons Photon Photon
   add Branch ElectronEfficiency/electrons Electron Electron
   add Branch MuonLooseIdEfficiency/muons MuonLoose Muon
   add Branch MuonTightIdEfficiency/muons MuonTight Muon
-  
+
   add Branch JetEnergyScale/jets Jet Jet
   add Branch FatJetFinder/jets FatJet Jet
-  
+
   add Branch MissingET/momentum MissingET MissingET
   add Branch ScalarHT/energy ScalarHT ScalarHT
 }

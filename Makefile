@@ -284,9 +284,10 @@ EXECUTABLE_OBJ +=  \
 tmp/modules/Pythia8Dict.$(SrcSuf): \
 	modules/Pythia8LinkDef.h \
 	modules/PileUpMergerPythia8.h
-Pythia8Dict$(PcmSuf): \
-	tmp/modules/Pythia8Dict$(PcmSuf) \
+tmp/modules/Pythia8Dict$(PcmSuf): \
 	tmp/modules/Pythia8Dict.$(SrcSuf)
+Pythia8Dict$(PcmSuf): \
+	tmp/modules/Pythia8Dict$(PcmSuf)
 DELPHES_DICT_OBJ +=  \
 	tmp/modules/Pythia8Dict.$(ObjSuf)
 
@@ -301,9 +302,10 @@ tmp/classes/ClassesDict.$(SrcSuf): \
 	classes/DelphesFactory.h \
 	classes/SortableObject.h \
 	classes/DelphesClasses.h
-ClassesDict$(PcmSuf): \
-	tmp/classes/ClassesDict$(PcmSuf) \
+tmp/classes/ClassesDict$(PcmSuf): \
 	tmp/classes/ClassesDict.$(SrcSuf)
+ClassesDict$(PcmSuf): \
+	tmp/classes/ClassesDict$(PcmSuf)
 tmp/external/ExRootAnalysis/ExRootAnalysisDict.$(SrcSuf): \
 	external/ExRootAnalysis/ExRootAnalysisLinkDef.h \
 	external/ExRootAnalysis/ExRootTreeReader.h \
@@ -316,9 +318,10 @@ tmp/external/ExRootAnalysis/ExRootAnalysisDict.$(SrcSuf): \
 	external/ExRootAnalysis/ExRootProgressBar.h \
 	external/ExRootAnalysis/ExRootConfReader.h \
 	external/ExRootAnalysis/ExRootTask.h
-ExRootAnalysisDict$(PcmSuf): \
-	tmp/external/ExRootAnalysis/ExRootAnalysisDict$(PcmSuf) \
+tmp/external/ExRootAnalysis/ExRootAnalysisDict$(PcmSuf): \
 	tmp/external/ExRootAnalysis/ExRootAnalysisDict.$(SrcSuf)
+ExRootAnalysisDict$(PcmSuf): \
+	tmp/external/ExRootAnalysis/ExRootAnalysisDict$(PcmSuf)
 tmp/modules/ModulesDict.$(SrcSuf): \
 	modules/ModulesLinkDef.h \
 	modules/Delphes.h \
@@ -329,6 +332,7 @@ tmp/modules/ModulesDict.$(SrcSuf): \
 	modules/IdentificationMap.h \
 	modules/EnergySmearing.h \
 	modules/MomentumSmearing.h \
+	modules/TrackSmearing.h \
 	modules/ImpactParameterSmearing.h \
 	modules/TimeSmearing.h \
 	modules/SimpleCalorimeter.h \
@@ -351,15 +355,19 @@ tmp/modules/ModulesDict.$(SrcSuf): \
 	modules/ConstituentFilter.h \
 	modules/StatusPidFilter.h \
 	modules/PdgCodeFilter.h \
+	modules/BeamSpotFilter.h \
 	modules/Cloner.h \
 	modules/Weighter.h \
 	modules/Hector.h \
 	modules/JetFlavorAssociation.h \
 	modules/JetFakeParticle.h \
+	modules/VertexSorter.h \
+	modules/VertexFinder.h \
 	modules/ExampleModule.h
-ModulesDict$(PcmSuf): \
-	tmp/modules/ModulesDict$(PcmSuf) \
+tmp/modules/ModulesDict$(PcmSuf): \
 	tmp/modules/ModulesDict.$(SrcSuf)
+ModulesDict$(PcmSuf): \
+	tmp/modules/ModulesDict$(PcmSuf)
 DELPHES_DICT_OBJ +=  \
 	tmp/classes/ClassesDict.$(ObjSuf) \
 	tmp/external/ExRootAnalysis/ExRootAnalysisDict.$(ObjSuf) \
@@ -375,9 +383,10 @@ tmp/modules/FastJetDict.$(SrcSuf): \
 	modules/FastJetFinder.h \
 	modules/FastJetGridMedianEstimator.h \
 	modules/RunPUPPI.h
-FastJetDict$(PcmSuf): \
-	tmp/modules/FastJetDict$(PcmSuf) \
+tmp/modules/FastJetDict$(PcmSuf): \
 	tmp/modules/FastJetDict.$(SrcSuf)
+FastJetDict$(PcmSuf): \
+	tmp/modules/FastJetDict$(PcmSuf)
 FASTJET_DICT_OBJ +=  \
 	tmp/modules/FastJetDict.$(ObjSuf)
 
@@ -393,9 +402,10 @@ tmp/display/DisplayDict.$(SrcSuf): \
 	display/DelphesEventDisplay.h \
 	display/DelphesHtmlSummary.h \
 	display/DelphesPlotSummary.h
-DisplayDict$(PcmSuf): \
-	tmp/display/DisplayDict$(PcmSuf) \
+tmp/display/DisplayDict$(PcmSuf): \
 	tmp/display/DisplayDict.$(SrcSuf)
+DisplayDict$(PcmSuf): \
+	tmp/display/DisplayDict$(PcmSuf)
 DISPLAY_DICT_OBJ +=  \
 	tmp/display/DisplayDict.$(ObjSuf)
 
@@ -559,6 +569,15 @@ tmp/modules/BTagging.$(ObjSuf): \
 	classes/DelphesClasses.h \
 	classes/DelphesFactory.h \
 	classes/DelphesFormula.h
+tmp/modules/BeamSpotFilter.$(ObjSuf): \
+	modules/BeamSpotFilter.$(SrcSuf) \
+	modules/BeamSpotFilter.h \
+	classes/DelphesClasses.h \
+	classes/DelphesFactory.h \
+	classes/DelphesFormula.h \
+	external/ExRootAnalysis/ExRootResult.h \
+	external/ExRootAnalysis/ExRootFilter.h \
+	external/ExRootAnalysis/ExRootClassifier.h
 tmp/modules/Calorimeter.$(ObjSuf): \
 	modules/Calorimeter.$(SrcSuf) \
 	modules/Calorimeter.h \
@@ -849,6 +868,15 @@ tmp/modules/TrackPileUpSubtractor.$(ObjSuf): \
 	external/ExRootAnalysis/ExRootResult.h \
 	external/ExRootAnalysis/ExRootFilter.h \
 	external/ExRootAnalysis/ExRootClassifier.h
+tmp/modules/TrackSmearing.$(ObjSuf): \
+	modules/TrackSmearing.$(SrcSuf) \
+	modules/TrackSmearing.h \
+	classes/DelphesClasses.h \
+	classes/DelphesFactory.h \
+	classes/DelphesFormula.h \
+	external/ExRootAnalysis/ExRootResult.h \
+	external/ExRootAnalysis/ExRootFilter.h \
+	external/ExRootAnalysis/ExRootClassifier.h
 tmp/modules/TreeWriter.$(ObjSuf): \
 	modules/TreeWriter.$(SrcSuf) \
 	modules/TreeWriter.h \
@@ -865,6 +893,26 @@ tmp/modules/UniqueObjectFinder.$(ObjSuf): \
 	classes/DelphesClasses.h \
 	classes/DelphesFactory.h \
 	classes/DelphesFormula.h \
+	external/ExRootAnalysis/ExRootResult.h \
+	external/ExRootAnalysis/ExRootFilter.h \
+	external/ExRootAnalysis/ExRootClassifier.h
+tmp/modules/VertexFinder.$(ObjSuf): \
+	modules/VertexFinder.$(SrcSuf) \
+	modules/VertexFinder.h \
+	classes/DelphesClasses.h \
+	classes/DelphesFactory.h \
+	classes/DelphesFormula.h \
+	classes/DelphesPileUpReader.h \
+	external/ExRootAnalysis/ExRootResult.h \
+	external/ExRootAnalysis/ExRootFilter.h \
+	external/ExRootAnalysis/ExRootClassifier.h
+tmp/modules/VertexSorter.$(ObjSuf): \
+	modules/VertexSorter.$(SrcSuf) \
+	modules/VertexSorter.h \
+	classes/DelphesClasses.h \
+	classes/DelphesFactory.h \
+	classes/DelphesFormula.h \
+	classes/DelphesPileUpReader.h \
 	external/ExRootAnalysis/ExRootResult.h \
 	external/ExRootAnalysis/ExRootFilter.h \
 	external/ExRootAnalysis/ExRootClassifier.h
@@ -928,6 +976,7 @@ DELPHES_OBJ +=  \
 	tmp/external/Hector/H_VerticalQuadrupole.$(ObjSuf) \
 	tmp/modules/AngularSmearing.$(ObjSuf) \
 	tmp/modules/BTagging.$(ObjSuf) \
+	tmp/modules/BeamSpotFilter.$(ObjSuf) \
 	tmp/modules/Calorimeter.$(ObjSuf) \
 	tmp/modules/Cloner.$(ObjSuf) \
 	tmp/modules/ConstituentFilter.$(ObjSuf) \
@@ -959,8 +1008,11 @@ DELPHES_OBJ +=  \
 	tmp/modules/TrackCountingBTagging.$(ObjSuf) \
 	tmp/modules/TrackCountingTauTagging.$(ObjSuf) \
 	tmp/modules/TrackPileUpSubtractor.$(ObjSuf) \
+	tmp/modules/TrackSmearing.$(ObjSuf) \
 	tmp/modules/TreeWriter.$(ObjSuf) \
 	tmp/modules/UniqueObjectFinder.$(ObjSuf) \
+	tmp/modules/VertexFinder.$(ObjSuf) \
+	tmp/modules/VertexSorter.$(ObjSuf) \
 	tmp/modules/Weighter.$(ObjSuf)
 
 ifeq ($(HAS_PYTHIA8),true)
@@ -968,6 +1020,13 @@ DELPHES_OBJ +=  \
 	tmp/modules/PileUpMergerPythia8.$(ObjSuf)
 endif
 
+tmp/external/PUPPI/PuppiAlgo.$(ObjSuf): \
+	external/PUPPI/PuppiAlgo.$(SrcSuf) \
+	external/fastjet/internal/base.hh
+tmp/external/PUPPI/PuppiContainer.$(ObjSuf): \
+	external/PUPPI/PuppiContainer.$(SrcSuf) \
+	external/fastjet/internal/base.hh \
+	external/fastjet/Selector.hh
 tmp/external/PUPPI/puppiCleanContainer.$(ObjSuf): \
 	external/PUPPI/puppiCleanContainer.$(SrcSuf) \
 	external/fastjet/Selector.hh
@@ -1322,14 +1381,14 @@ tmp/modules/FastJetGridMedianEstimator.$(ObjSuf): \
 tmp/modules/RunPUPPI.$(ObjSuf): \
 	modules/RunPUPPI.$(SrcSuf) \
 	modules/RunPUPPI.h \
-	external/PUPPI/puppiCleanContainer.hh \
-	external/PUPPI/RecoObj.hh \
-	external/PUPPI/puppiParticle.hh \
-	external/PUPPI/puppiAlgoBin.hh \
+	external/PUPPI/RecoObj2.hh \
+	external/PUPPI/AlgoObj.hh \
 	classes/DelphesClasses.h \
 	classes/DelphesFactory.h \
 	classes/DelphesFormula.h
 FASTJET_OBJ +=  \
+	tmp/external/PUPPI/PuppiAlgo.$(ObjSuf) \
+	tmp/external/PUPPI/PuppiContainer.$(ObjSuf) \
 	tmp/external/PUPPI/puppiCleanContainer.$(ObjSuf) \
 	tmp/external/fastjet/AreaDefinition.$(ObjSuf) \
 	tmp/external/fastjet/BasicRandom.$(ObjSuf) \
@@ -1558,6 +1617,10 @@ TCL_OBJ +=  \
 	tmp/external/tcl/tclUtil.$(ObjSuf) \
 	tmp/external/tcl/tclVar.$(ObjSuf)
 
+modules/TrackSmearing.h: \
+	classes/DelphesModule.h
+	@touch $@
+
 external/fastjet/ClusterSequence.hh: \
 	external/fastjet/PseudoJet.hh \
 	external/fastjet/Error.hh \
@@ -1755,7 +1818,8 @@ external/fastjet/internal/DynamicNearestNeighbours.hh: \
 	@touch $@
 
 modules/RunPUPPI.h: \
-	classes/DelphesModule.h
+	classes/DelphesModule.h \
+	external/PUPPI/PuppiContainer.hh
 	@touch $@
 
 modules/Cloner.h: \
@@ -1814,8 +1878,18 @@ external/fastjet/internal/Dnn4piCylinder.hh: \
 	external/fastjet/internal/numconsts.hh
 	@touch $@
 
+modules/VertexSorter.h: \
+	classes/DelphesModule.h \
+	classes/DelphesClasses.h
+	@touch $@
+
 modules/Delphes.h: \
 	classes/DelphesModule.h
+	@touch $@
+
+modules/VertexFinder.h: \
+	classes/DelphesModule.h \
+	classes/DelphesClasses.h
 	@touch $@
 
 modules/UniqueObjectFinder.h: \
@@ -1877,14 +1951,6 @@ external/fastjet/ClusterSequenceVoronoiArea.hh: \
 	external/fastjet/PseudoJet.hh \
 	external/fastjet/AreaDefinition.hh \
 	external/fastjet/ClusterSequenceAreaBase.hh
-	@touch $@
-
-external/PUPPI/puppiCleanContainer.hh: \
-	external/PUPPI/RecoObj.hh \
-	external/PUPPI/puppiParticle.hh \
-	external/PUPPI/puppiAlgoBin.hh \
-	external/fastjet/internal/base.hh \
-	external/fastjet/PseudoJet.hh
 	@touch $@
 
 modules/BTagging.h: \
@@ -1990,6 +2056,10 @@ external/fastjet/ClusterSequencePassiveArea.hh: \
 	@touch $@
 
 modules/FastJetFinder.h: \
+	classes/DelphesModule.h
+	@touch $@
+
+modules/BeamSpotFilter.h: \
 	classes/DelphesModule.h
 	@touch $@
 
@@ -2115,7 +2185,15 @@ dist:
 	@cat $@.arch $< $@.base > $@
 	@rm $@.arch $@.base
 
-%Dict$(PcmSuf):
+$(DELPHES_DICT_PCM): %Dict$(PcmSuf):
+	@echo ">> Copying $@"
+	@cp $< $@
+
+$(FASTJET_DICT_PCM): %Dict$(PcmSuf):
+	@echo ">> Copying $@"
+	@cp $< $@
+
+$(DISPLAY_DICT_PCM): %Dict$(PcmSuf):
 	@echo ">> Copying $@"
 	@cp $< $@
 
